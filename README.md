@@ -2,7 +2,7 @@
 
 ## Yêu cầu 
 *   **Ngôn ngữ:** Java 
-*   **Môi trường:** **JDK 25**
+*   **Môi trường:** **JDK 25** (Chưa cài JDK 25 thì cài đi nha anh em)
 *   **Giao diện:** Java Swing + thư viện FlatLaf
 *   **CSDL:** Microsoft SQL Server (JDBC)
 
