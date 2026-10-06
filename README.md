@@ -131,7 +131,7 @@ TiTiPet/
 *   **Chi tiết:** Quản lý thông tin Khách hàng (Thẻ tích điểm), Hồ sơ Thú cưng, Quản lý Nhập/Xuất kho sản phẩm, Khuyến mãi.
 
 ## Hướng dẫn Setup chạy dự án
-1.  **Clone code:** `git clone <link-repo>` nhét cái link dự án nhóm vào.
+1.  **Clone code:** `git clone [<link-repo>](https://github.com/HuyBlaBlo/TiTi-Pet.git)` nhét cái link dự án nhóm vào.
 2.  **Cài đặt DB:** Mở thư mục `database/`, chạy tuần tự 4 file SQL trên SSMS or Azure or DBeaver, thích dùng chó gì thì dùng 
 3.  **Cấu hình IDE (IntelliJ / Eclipse):**
     *   Vào `Project Structure` -> Kiểm tra đúng môi trường **JDK 25**.
