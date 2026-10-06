@@ -1,0 +1,58 @@
+# --- CÁC FILE BIÊN DỊCH BỞI JAVA ---
+*.class
+
+# --- CÁC FILE LOG CỦA HỆ THỐNG ---
+*.log
+
+# --- CÁC FILE NÉN (Lưu ý: KHÔNG ignore *.jar vì dự án đang dùng thư mục lib/) ---
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+### IntelliJ IDEA ###
+.idea/
+*.iml
+*.iws
+*.workspace
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+.kotlin
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache
+.metadata/
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+
+### VS Code ###
+.vscode/
+.history/
+
+### Mac OS ###
+.DS_Store
+.AppleDouble
+.LSOverride
+
+### Windows ###
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
