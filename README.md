@@ -1,8 +1,6 @@
-# TiTiPet - Hệ Thống Quản Lý Cửa Hàng Thú Cưng & Spa
+# TiTiPet - Hệ Thống Quản Lý Cửa Hàng Thú Cưng và Spa
 
-Dự án phần mềm quản lý nội bộ cửa hàng thú cưng TiTiPet. Phát triển bằng Java Swing thuần, kiến trúc 3 lớp, thao tác với CSDL SQL Server qua JDBC.
-
-## Yêu cầu hệ thống (Tech Stack)
+## Yêu cầu 
 *   **Ngôn ngữ:** Java 
 *   **Môi trường:** **JDK 25**
 *   **Giao diện:** Java Swing + thư viện FlatLaf
