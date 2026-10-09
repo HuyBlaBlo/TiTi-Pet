@@ -33,11 +33,13 @@
                     ├── KhoService.java                 # Cảnh báo cận date, sắp hết hàng
                     ├── LichHenService.java             # Check trùng lịch, hủy trước 1.5h
                     ├── SpaService.java                 # Tính giá Spa theo cân nặng, xếp lịch thợ
+                    └── HoaDonService.java              # Gọi cả 2 DAO trên trong 1 transaction
                 └── 📁connectDB
                     ├── ConnectDB.java                  # Kết nối với dbdb
                 └── 📁dao
                     ├── CaLamViecDAO.java               # --- TẦNG 3: DATA ACCESS OBJECT (JDBC) ---
-                    ├── ChiTietHoaDonDAO.java
+                    ├── ChiTietHoaDon_DichVuDAO.java
+                    ├── ChiTietHoaDon_SanPhamDAO.java
                     ├── DichVuSpaDAO.java
                     ├── HoaDonDAO.java
                     ├── KhachHangDAO.java
@@ -54,8 +56,8 @@
                         ├── TrangThaiLichHen.java
                         └── VaiTro.java
                     ├── CaLamViec.java
-                    ├── ChiTietHoaDon_SanPham.java
                     ├── ChiTietHoaDon_DichVu.java
+                    ├── ChiTietHoaDon_SanPham.java
                     ├── DichVuSpa.java
                     ├── HoaDon.java
                     ├── KhachHang.java
