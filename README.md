@@ -25,8 +25,8 @@
         └── 📁com
             └── 📁titipet
                 └── 📁bus                               # --- TẦNG 2: BUSINESS LOGIC / SERVICE ---
-                    ├── AuthService.java
-                    ├── BanHangService.java             # Đăng nhập, phân quyền
+                    ├── AuthService.java                # Đăng nhập, phân quyền
+                    ├── BanHangService.java             # Lập bill, tính tiền, trừ kho, tích điểm VIP
                     ├── ChotCaService.java              # Đối soát doanh thu tiền mặt/CK
                     ├── DoiTraService.java              # Kiểm tra điều kiện đổi trả
                     ├── KhachHangService.java           # Quản lý điểm, tính nâng cấp VIP (3%, 4%, 5%)
