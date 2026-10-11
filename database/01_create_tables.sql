@@ -44,7 +44,7 @@ CREATE TABLE KhuyenMai(
     ngayBatDau DATETIME2 NOT NULL,
     ngayKetThuc DATETIME2 NOT NULL,
     giamTram DECIMAL(5,2) NOT NULL,
-    trangThai BIT NOT NULL
+    trangThai BIT NOT NULL,
     CONSTRAINT PK_KhuyenMai PRIMARY KEY (maKhuyenMai)
 )
 GO
@@ -56,7 +56,7 @@ CREATE TABLE SanPham (
     giaBan DECIMAL(18,2) NOT NULL,
     soLuongTonKho INT NOT NULL,
     hanSuDung DATE NULL,
-    maVach VARCHAR(50) NULL
+    maVach VARCHAR(50) NULL,
     CONSTRAINT PK_SanPham PRIMARY KEY (maSanPham)
 )
 GO
@@ -70,7 +70,7 @@ CREATE TABLE ThuCung (
     canNang FLOAT NOT NULL,
     tinhTrangLong NVARCHAR(200) NULL,
     ghiChu NVARCHAR(500) NULL,
-    maKH VARCHAR(20),
+    maKH VARCHAR(20) NOT NULL,
     CONSTRAINT PK_ThuCung PRIMARY KEY (maThuCung),
     CONSTRAINT FK_ThuCung_KhachHang FOREIGN KEY (maKH) REFERENCES KhachHang(maKH)
 )
@@ -156,7 +156,7 @@ CREATE TABLE HoaDon (
 GO
 
 -- 12. BANG PHIEU KET QUA
--- KhachHang(maNV) -> maKH(fk)
+-- KhachHang(maKH) -> maKH(fk)
 -- CaLamViec(maCa) -> maCa(fk)
 CREATE TABLE PhieuKetCa (
     maPhieu VARCHAR(20) NOT NULL,
@@ -179,7 +179,7 @@ CREATE TABLE ChiTietHoaDon_SanPham (
     maSanPham VARCHAR(20) NOT NULL,
     soLuong INT NOT NULL,
     donGia DECIMAL(18,2) NOT NULL,
-    thanhTien AS (CONVERT(DECIMAL(28,2), soLuong * donGia)) PERSISTED, -- lay gia tri truc tiep tu bang
+    thanhTien AS (CONVERT(DECIMAL(28,2), soLuong * donGia)) PERSISTED, -- lưu giá trị đã tính và tự cập nhật khi dữ liệu liên quan thay đổi
     CONSTRAINT PK_ChiTietHoaDon_SanPham PRIMARY KEY (maHoaDon, maSanPham),
     CONSTRAINT FK_CTHDSP_HoaDon FOREIGN KEY (maHoaDon) REFERENCES HoaDon(maHoaDon),
     CONSTRAINT FK_CTHDSP_SanPham FOREIGN KEY (maSanPham) REFERENCES SanPham(maSanPham)
