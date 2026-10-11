@@ -1,0 +1,200 @@
+USE master
+
+IF EXISTS (SELECT name FROM sys.databases WHERE name = 'TITIPET')
+BEGIN
+    ALTER DATABASE TITIPET SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+
+    DROP DATABASE TITIPET
+END
+go
+CREATE DATABASE TITIPET
+GO
+USE TITIPET
+GO
+--1.BANG KHACH HANG
+CREATE TABLE KhachHang(
+    maKH VARCHAR(20) NOT NULL,
+    hoTen NVARCHAR(100) NOT NULL,
+    soDienThoai VARCHAR(15) NOT NULL,
+    hangTV NVARCHAR(30) NULL,
+    diemTichLuy INT NOT NULL DEFAULT 0,
+    tongChiTieu DECIMAL(18,2) NOT NULL DEFAULT 0,
+    CONSTRAINT PK_KhachHang PRIMARY KEY (maKH)
+)
+GO
+-- 2.BANG NHAN VIEN
+CREATE TABLE NhanVien (
+    maNV VARCHAR(20) NOT NULL,
+    matKhau NVARCHAR(255) NULL,
+    hoTen NVARCHAR(100) NOT NULL,
+    vaiTro NVARCHAR(30) NOT NULL,
+    ngaySinh DATE NULL,
+    diaChi NVARCHAR(255) NULL,
+    heSoLuong FLOAT NOT NULL,
+    luongCoBan FLOAT NOT NULL,
+    ngayVaoLam DATE NULL,
+    CONSTRAINT PK_NhanVien PRIMARY KEY (maNV)
+)
+GO
+
+-- 3.BANG KHUYEN MAI
+CREATE TABLE KhuyenMai(
+    maKhuyenMai VARCHAR(20) NOT NULL,
+    tenChuongTrinh NVARCHAR(150) NOT NULL,
+    ngayBatDau DATETIME2 NOT NULL,
+    ngayKetThuc DATETIME2 NOT NULL,
+    giamTram DECIMAL(5,2) NOT NULL,
+    trangThai BIT NOT NULL
+    CONSTRAINT PK_KhuyenMai PRIMARY KEY (maKhuyenMai)
+)
+GO
+-- 4.BANG SAN PHAM (LOP CHA)
+
+CREATE TABLE SanPham (
+    maSanPham VARCHAR(20) NOT NULL,
+    tenSanPham NVARCHAR(150) NOT NULL,
+    giaBan DECIMAL(18,2) NOT NULL,
+    soLuongTonKho INT NOT NULL,
+    hanSuDung DATE NULL,
+    maVach VARCHAR(50) NULL
+    CONSTRAINT PK_SanPham PRIMARY KEY (maSanPham)
+)
+GO
+
+-- 5.BANG THU CUNG
+-- MOI QUAN HE: chuNuoi (KhachHang) -> maKH (FK)
+CREATE TABLE ThuCung (
+    maThuCung VARCHAR(20) NOT NULL,
+    tenThuCung NVARCHAR(100) NOT NULL,
+    loaiThuCung NVARCHAR(50) NOT NULL,
+    canNang FLOAT NOT NULL,
+    tinhTrangLong NVARCHAR(200) NULL,
+    ghiChu NVARCHAR(500) NULL,
+    maKH VARCHAR(20),
+    CONSTRAINT PK_ThuCung PRIMARY KEY (maThuCung),
+    CONSTRAINT FK_ThuCung_KhachHang FOREIGN KEY (maKH) REFERENCES KhachHang(maKH)
+)
+GO
+
+-- 6.BANG PHU KIEN
+-- KE THUA SanPham: MA SAN PHAM VUA LA KHOA CHINH VUA LA KHOA NGOAI
+CREATE TABLE PhuKien (
+    maSanPham VARCHAR(20) NOT NULL,
+    kichThuoc NVARCHAR(50) NULL,
+    mauSac NVARCHAR(50) NULL,
+    chatLieu NVARCHAR(100) NULL,
+    CONSTRAINT PK_PhuKien PRIMARY KEY (maSanPham),
+    CONSTRAINT FK_PhuKien_SanPham FOREIGN KEY (maSanPham) REFERENCES SanPham(maSanPham)
+)
+GO
+
+-- 7.BANG THUC AN
+-- KE THUA SanPham:  MA SAN PHAM VUA LA KHOA CHINH VUA LA KHOA NGOAI
+CREATE TABLE ThucAn (
+    maSanPham VARCHAR(20) NOT NULL,
+    hanSuDung DATETIME2 NOT NULL,
+    trongLuong FLOAT NOT NULL,
+    CONSTRAINT PK_ThucAn PRIMARY KEY (maSanPham),
+    CONSTRAINT FK_ThucAn_SanPham FOREIGN KEY (maSanPham) REFERENCES SanPham(maSanPham)
+)
+GO
+
+-- 8. BANG DICHH VU SPA
+CREATE TABLE DichVuSpa (
+    maDichVu VARCHAR(20) NOT NULL,
+    tenDichVu NVARCHAR(100) NOT NULL,
+    donGiaCaoDiem DECIMAL(18,2) NOT NULL,
+    donGiaThapDiem DECIMAL(18,2) NOT NULL,
+    loaiThuCungApDung NVARCHAR(50) NOT NULL,
+    CONSTRAINT PK_DichVuSpa PRIMARY KEY (maDichVu)
+)
+GO
+
+-- 9. BANG CA LAM VIEC : nhanVienTruc (NhanVien) -> maNV (FK)
+CREATE TABLE CaLamViec (
+    maCa VARCHAR(20) NOT NULL,
+    thoiGianBatDau DATETIME2 NOT NULL,
+    thoiGianKetThuc DATETIME2 NOT NULL,
+    maNV VARCHAR(20) NOT NULL,
+    ghiChu NVARCHAR(500) NULL,
+    CONSTRAINT PK_CaLamViec PRIMARY KEY (maCa),
+    CONSTRAINT FK_CaLamViec_NhanVien FOREIGN KEY (maNV) REFERENCES NhanVien(maNV)
+)
+GO
+
+-- 10 . BANG LICH HEN:
+-- KhachHang(maKH) -> maKH (fk)
+-- ThuCung(maThuCung) -> maThuCung(FK)
+-- DichVuSpa(maDichVu) -> maDichVu(FK)
+CREATE TABLE LichHen(
+    maLichHen VARCHAR(20) NOT NULL,
+    thoiGianHen DATETIME2 NOT NULL,
+    trangThai NVARCHAR(40) NOT NULL,
+    maKH VARCHAR(20) NOT NULL,
+    maThuCung VARCHAR(20) NOT NULL,
+    maDichVu VARCHAR(20) NOT NULL,
+    ghiChu NVARCHAR(500) NULL,
+    CONSTRAINT PK_LichHen PRIMARY KEY (maLichHen),
+    CONSTRAINT FK_LichHen_KhachHang FOREIGN KEY (maKH) REFERENCES KhachHang(maKH),
+    CONSTRAINT FK_LichHen_ThuCung FOREIGN KEY (maThuCung) REFERENCES ThuCung(maThuCung),
+    CONSTRAINT FK_LichHen_DichVuSpa FOREIGN KEY (maDichVu) REFERENCES DichVuSpa(maDichVu)
+)
+go
+
+--11. BANG HOA DON
+--
+CREATE TABLE HoaDon (
+    maHoaDon VARCHAR(20) NOT NULL,
+    ngayLap DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
+    maKH VARCHAR(20) NULL,
+    maNV VARCHAR(20) NULL,
+    tongTien DECIMAL(18,2) NOT NULL DEFAULT 0,
+    CONSTRAINT PK_HoaDon PRIMARY KEY (maHoaDon),
+    CONSTRAINT FK_HoaDon_KhachHang FOREIGN KEY (maKH) REFERENCES KhachHang(maKH),
+    CONSTRAINT FK_HoaDon_NhanVien FOREIGN KEY (maNV) REFERENCES NhanVien(maNV)
+)
+GO
+
+-- 12. BANG PHIEU KET QUA
+-- KhachHang(maNV) -> maKH(fk)
+-- CaLamViec(maCa) -> maCa(fk)
+CREATE TABLE PhieuKetCa (
+    maPhieu VARCHAR(20) NOT NULL,
+    maNV VARCHAR(20) NOT NULL,
+    maCa VARCHAR(20) NOT NULL,
+    soTienBanDauCa DECIMAL(18,2) NOT NULL,
+    tienMat DECIMAL(18,2) NOT NULL,
+    tienCK DECIMAL(18,2) NOT NULL,
+    tongTienKetCa DECIMAL(18,2) NOT NULL DEFAULT 0,
+    ngayLapPhieu DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
+    CONSTRAINT PK_PhieuKetCa PRIMARY KEY (maPhieu),
+    CONSTRAINT FK_PhieuKetCa_NhanVien FOREIGN KEY (maNV) REFERENCES NhanVien(maNV),
+    CONSTRAINT FK_PhieuKetCa_CaLamViec FOREIGN KEY (maCa) REFERENCES CaLamViec(maCa)
+)
+GO
+
+--13. ChiTietHoaDon_SanPham
+CREATE TABLE ChiTietHoaDon_SanPham (
+    maHoaDon VARCHAR(20) NOT NULL,
+    maSanPham VARCHAR(20) NOT NULL,
+    soLuong INT NOT NULL,
+    donGia DECIMAL(18,2) NOT NULL,
+    thanhTien AS (CONVERT(DECIMAL(28,2), soLuong * donGia)) PERSISTED, -- lay gia tri truc tiep tu bang
+    CONSTRAINT PK_ChiTietHoaDon_SanPham PRIMARY KEY (maHoaDon, maSanPham),
+    CONSTRAINT FK_CTHDSP_HoaDon FOREIGN KEY (maHoaDon) REFERENCES HoaDon(maHoaDon),
+    CONSTRAINT FK_CTHDSP_SanPham FOREIGN KEY (maSanPham) REFERENCES SanPham(maSanPham)
+)
+GO
+
+--14.ChiTietHoaDon_DichVu
+CREATE TABLE ChiTietHoaDon_DichVu (
+    maHoaDon VARCHAR(20) NOT NULL,
+    maDichVu VARCHAR(20) NOT NULL,
+    soLuong INT NOT NULL,
+    donGia DECIMAL(18,2) NOT NULL,
+    thanhTien AS (CONVERT(DECIMAL(28,2), soLuong * donGia)) PERSISTED,
+    CONSTRAINT PK_ChiTietHoaDon_DichVu PRIMARY KEY (maHoaDon, maDichVu),
+    CONSTRAINT FK_CTHDDV_HoaDon FOREIGN KEY (maHoaDon) REFERENCES HoaDon(maHoaDon),
+    CONSTRAINT FK_CTHDDV_DichVuSpa FOREIGN KEY (maDichVu)REFERENCES DichVuSpa(maDichVu)
+)
+GO

@@ -107,6 +107,16 @@
     └── TiTiPet.iml
 ```
 
+## Thứ tự triển khai
+
+1. Thiết kế Database - _Tạo bảng,PK/FK, constraints_
+2. Kết nối SQL Server - _ConnectDB.java, JDBC_
+3. Xây dựng Entity - _Model Java và Enum_
+4. Xây dựng DAO - _CRUD, PreparedStatement, ResultSet_
+5. Xây dựng BUS - _Nghiệp vụ, validation_
+6. Xây dựng GUI - _Swing, JFrame, JPanel_
+7. Test
+
 ## Phân công nhiệm vụ
 
 Để tránh xung đột code (Merge Conflict) khi đẩy lên GitHub, làm **từ DAO -> BUS -> GUI** cho module mình phụ trách. Không ai đụng vào form hay file DAO của người khác.
