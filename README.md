@@ -124,22 +124,22 @@
 **1.Anh Ba Đen**
 
 - **Nhiệm vụ:** Setup bộ khung dự án ban đầu (Base code, ConnectDB, MainFrame).
-- **Module phụ trách:** Chức năng Đăng nhập, Phân quyền, Thống kê doanh thu (Dashboard) và Quản lý nhân viên/ca trực.
+- **Module phụ trách:** CĐăng nhập, nhân viên, phân quyền, thống kê.
 - **Note:** duyệt code (Review Pull Request) cuối cùng trước khi gộp vào nhánh `main`.
 
 **2.Chị Da Vàng**
 
-- **Module phụ trách:** Quy trình Dịch vụ Spa.
+- **Module phụ trách:** Lịch hẹn, tiếp nhận và thực hiện Spa
 - **Chi tiết:** Quản lý Lịch hẹn (LichHenDAO/BUS/Panel), Tiếp nhận thú cưng (chọn thợ, cân nặng), Cập nhật trạng thái Spa, Danh mục giá dịch vụ.
 
 **3. Anh Da Trắng**
 
-- **Module phụ trách:** Bán hàng và Thu ngân.
+- **Module phụ trách:** Bán hàng, hóa đơn, thanh toán, chốt ca
 - **Chi tiết:** Lập Hóa đơn (gộp sản phẩm + dịch vụ Spa), Tính tiền, Chiết khấu, Đổi trả hàng, Chốt ca (kết sổ doanh thu).
 
 **4. Chị Da Đỏ**
 
-- **Module phụ trách:** Khách hàng, Thú cưng & Kho.
+- **Module phụ trách:**Khách hàng, thú cưng, sản phẩm, kho, khuyến mãi
 - **Chi tiết:** Quản lý thông tin Khách hàng (Thẻ tích điểm), Hồ sơ Thú cưng, Quản lý Nhập/Xuất kho sản phẩm, Khuyến mãi.
 
 ## Hướng dẫn Setup chạy dự án
