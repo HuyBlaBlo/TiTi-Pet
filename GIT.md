@@ -50,7 +50,6 @@ main
 ## 4. Quy trình
 
 ### Bước 1: Lấy dự án lần đầu
-
 ```bash
 git clone https://github.com/HuyBlaBlo/TiTi-Pet.git
 cd TiTi-Pet
@@ -58,7 +57,7 @@ git fetch origin
 git switch develop
 ```
 
-Nếu đã clone dự án rồi thì bỏ qua bước này.
+Nếu đã clone dự án rồi thì bỏ qua bước này
 
 ### Bước 2: Cập nhật `develop` và tạo nhánh chức năng
 
