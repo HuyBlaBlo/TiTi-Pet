@@ -6,222 +6,144 @@ import com.titipet.entity.enums.TrangThaiHoaDon;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 public class HoaDon {
     private String maHoaDon;
     private LocalDateTime ngayLap;
     private KhachHang khachHang;
     private NhanVien nhanVien;
-    private CaLamViec caLamViec;
     private KhuyenMai khuyenMai;
+    private CaLamViec caLamViec;
     private NguonDon nguonDon;
     private String maDonKenh;
     private PhuongThucThanhToan phuongThucThanhToan;
     private TrangThaiHoaDon trangThai;
-    private BigDecimal tongTienHang;
-    private BigDecimal tongTienSpa;
-    private BigDecimal tienGiamKM;
-    private BigDecimal tienGiamHangTV;
     private int soDiemSuDung;
-    private BigDecimal tienGiamDiem;
-    private BigDecimal tienPhaiThu;
-    private int soDiemDuocTich;
-    private BigDecimal tongTienTruocThue;
-    private BigDecimal tongTienThue;
-    private BigDecimal tongTien;
+
+    private List<ChiTietHoaDon_SanPham> chiTietSanPhams;
+    private List<ChiTietHoaDon_DichVu> chiTietDichVus;
+
+    public HoaDon(String maHoaDon, LocalDateTime ngayLap, KhachHang khachHang, NhanVien nhanVien, KhuyenMai khuyenMai, CaLamViec caLamViec, NguonDon nguonDon, String maDonKenh, PhuongThucThanhToan phuongThucThanhToan, TrangThaiHoaDon trangThai, int soDiemSuDung, List<ChiTietHoaDon_SanPham> chiTietSanPhams, List<ChiTietHoaDon_DichVu> chiTietDichVus) {
+        this.maHoaDon = maHoaDon;
+        this.ngayLap = ngayLap;
+        this.khachHang = khachHang;
+        this.nhanVien = nhanVien;
+        this.khuyenMai = khuyenMai;
+        this.caLamViec = caLamViec;
+        this.nguonDon = nguonDon;
+        this.maDonKenh = maDonKenh;
+        this.phuongThucThanhToan = phuongThucThanhToan;
+        this.trangThai = trangThai;
+        this.soDiemSuDung = soDiemSuDung;
+        this.chiTietSanPhams = chiTietSanPhams;
+        this.chiTietDichVus = chiTietDichVus;
+    }
 
     public HoaDon() {
+        this.ngayLap = LocalDateTime.now();
+        this.chiTietSanPhams = new ArrayList<>();
+        this.chiTietDichVus = new ArrayList<>();
     }
 
-    public HoaDon(String maHoaDon, LocalDateTime ngayLap, KhachHang khachHang, NhanVien nhanVien, CaLamViec caLamViec, KhuyenMai khuyenMai, NguonDon nguonDon, String maDonKenh, PhuongThucThanhToan phuongThucThanhToan, TrangThaiHoaDon trangThai, BigDecimal tongTienHang, BigDecimal tongTienSpa, BigDecimal tienGiamKM, BigDecimal tienGiamHangTV, int soDiemSuDung, BigDecimal tienGiamDiem, BigDecimal tienPhaiThu, int soDiemDuocTich, BigDecimal tongTienTruocThue, BigDecimal tongTienThue, BigDecimal tongTien) {
-        this.maHoaDon = maHoaDon;
-        this.ngayLap = ngayLap;
-        this.khachHang = khachHang;
-        this.nhanVien = nhanVien;
-        this.caLamViec = caLamViec;
-        this.khuyenMai = khuyenMai;
-        this.nguonDon = nguonDon;
-        this.maDonKenh = maDonKenh;
-        this.phuongThucThanhToan = phuongThucThanhToan;
-        this.trangThai = trangThai;
-        this.tongTienHang = tongTienHang;
-        this.tongTienSpa = tongTienSpa;
-        this.tienGiamKM = tienGiamKM;
-        this.tienGiamHangTV = tienGiamHangTV;
-        this.soDiemSuDung = soDiemSuDung;
-        this.tienGiamDiem = tienGiamDiem;
-        this.tienPhaiThu = tienPhaiThu;
-        this.soDiemDuocTich = soDiemDuocTich;
-        this.tongTienTruocThue = tongTienTruocThue;
-        this.tongTienThue = tongTienThue;
-        this.tongTien = tongTien;
+    // 1. Tổng tiền sản phẩm
+    public BigDecimal tinhTongTienHang() {
+        BigDecimal tong = BigDecimal.ZERO;
+
+        for (ChiTietHoaDon_SanPham ct : chiTietSanPhams) {
+            tong = tong.add(ct.tinhThanhTien());
+        }
+
+        return tong;
     }
 
-    public String getMaHoaDon() {
-        return maHoaDon;
+    // 2. Tổng tiền dịch vụ Spa
+    public BigDecimal tinhTongTienSpa() {
+        BigDecimal tong = BigDecimal.ZERO;
+
+        for (ChiTietHoaDon_DichVu ct : chiTietDichVus) {
+            tong = tong.add(ct.tinhThanhTien());
+        }
+
+        return tong;
     }
 
-    public void setMaHoaDon(String maHoaDon) {
-        this.maHoaDon = maHoaDon;
+    // 3. Tổng tiền trước thuế
+    public BigDecimal tinhTongTienTruocThue() {
+        BigDecimal tong = BigDecimal.ZERO;
+
+        for (ChiTietHoaDon_SanPham ct : chiTietSanPhams) {
+            tong = tong.add(ct.tinhGiaTriSauGiam());
+        }
+
+        for (ChiTietHoaDon_DichVu ct : chiTietDichVus) {
+            tong = tong.add(ct.tinhGiaTriSauGiam());
+        }
+
+        return tong;
     }
 
-    public LocalDateTime getNgayLap() {
-        return ngayLap;
+    // 4. Tổng tiền thuế
+    public BigDecimal tinhTongTienThue() {
+        BigDecimal tong = BigDecimal.ZERO;
+
+        for (ChiTietHoaDon_SanPham ct : chiTietSanPhams) {
+            tong = tong.add(ct.tinhTienThue());
+        }
+
+        for (ChiTietHoaDon_DichVu ct : chiTietDichVus) {
+            tong = tong.add(ct.tinhTienThue());
+        }
+
+        return tong;
     }
 
-    public void setNgayLap(LocalDateTime ngayLap) {
-        this.ngayLap = ngayLap;
+    // 5. Tổng tiền thanh toán sau giảm giá và thuế
+    public BigDecimal tinhTongTien() {
+        return tinhTongTienHang().add(tinhTongTienSpa());
     }
 
-    public KhachHang getKhachHang() {
-        return khachHang;
+    // 6. Tiền giảm giá
+    public BigDecimal tinhTienGiam() {
+        BigDecimal tongGiam = BigDecimal.ZERO;
+
+        for (ChiTietHoaDon_SanPham ct : chiTietSanPhams) {
+            tongGiam = tongGiam.add(ct.getTienGiamPhanBo());
+        }
+
+        for (ChiTietHoaDon_DichVu ct : chiTietDichVus) {
+            tongGiam = tongGiam.add(ct.getTienGiamPhanBo());
+        }
+
+        return tongGiam;
     }
 
-    public void setKhachHang(KhachHang khachHang) {
-        this.khachHang = khachHang;
+    // 7. Quy đổi điểm thành tiền
+    public BigDecimal quyDoiDiem(int diem) {
+        if (diem < 0) {
+            throw new IllegalArgumentException("Điểm không hợp lệ");
+        }
+
+        // Tỷ lệ minh họa: 1 điểm = 1.000đ
+        // Cần thay bằng quy định của TiTiPet.
+        return BigDecimal.valueOf(diem)
+                .multiply(BigDecimal.valueOf(1000));
     }
 
-    public NhanVien getNhanVien() {
-        return nhanVien;
+    // 8. Tiền phải thu
+    public BigDecimal tinhTienPhaiThu() {
+        return tinhTongTien();
     }
 
-    public void setNhanVien(NhanVien nhanVien) {
-        this.nhanVien = nhanVien;
+    // 9. Điểm được tích
+    public int tinhDiemDuocTich() {
+        // Chưa có quy tắc tích điểm được chốt ở đây.
+        return 0;
     }
 
-    public CaLamViec getCaLamViec() {
-        return caLamViec;
-    }
-
-    public void setCaLamViec(CaLamViec caLamViec) {
-        this.caLamViec = caLamViec;
-    }
-
-    public KhuyenMai getKhuyenMai() {
-        return khuyenMai;
-    }
-
-    public void setKhuyenMai(KhuyenMai khuyenMai) {
-        this.khuyenMai = khuyenMai;
-    }
-
-    public NguonDon getNguonDon() {
-        return nguonDon;
-    }
-
-    public void setNguonDon(NguonDon nguonDon) {
-        this.nguonDon = nguonDon;
-    }
-
-    public String getMaDonKenh() {
-        return maDonKenh;
-    }
-
-    public void setMaDonKenh(String maDonKenh) {
-        this.maDonKenh = maDonKenh;
-    }
-
-    public PhuongThucThanhToan getPhuongThucThanhToan() {
-        return phuongThucThanhToan;
-    }
-
-    public void setPhuongThucThanhToan(PhuongThucThanhToan phuongThucThanhToan) {
-        this.phuongThucThanhToan = phuongThucThanhToan;
-    }
-
-    public TrangThaiHoaDon getTrangThai() {
-        return trangThai;
-    }
-
-    public void setTrangThai(TrangThaiHoaDon trangThai) {
-        this.trangThai = trangThai;
-    }
-
-    public BigDecimal getTongTienHang() {
-        return tongTienHang;
-    }
-
-    public void setTongTienHang(BigDecimal tongTienHang) {
-        this.tongTienHang = tongTienHang;
-    }
-
-    public BigDecimal getTongTienSpa() {
-        return tongTienSpa;
-    }
-
-    public void setTongTienSpa(BigDecimal tongTienSpa) {
-        this.tongTienSpa = tongTienSpa;
-    }
-
-    public BigDecimal getTienGiamKM() {
-        return tienGiamKM;
-    }
-
-    public void setTienGiamKM(BigDecimal tienGiamKM) {
-        this.tienGiamKM = tienGiamKM;
-    }
-
-    public BigDecimal getTienGiamHangTV() {
-        return tienGiamHangTV;
-    }
-
-    public void setTienGiamHangTV(BigDecimal tienGiamHangTV) {
-        this.tienGiamHangTV = tienGiamHangTV;
-    }
-
-    public int getSoDiemSuDung() {
-        return soDiemSuDung;
-    }
-
-    public void setSoDiemSuDung(int soDiemSuDung) {
-        this.soDiemSuDung = soDiemSuDung;
-    }
-
-    public BigDecimal getTienGiamDiem() {
-        return tienGiamDiem;
-    }
-
-    public void setTienGiamDiem(BigDecimal tienGiamDiem) {
-        this.tienGiamDiem = tienGiamDiem;
-    }
-
-    public BigDecimal getTienPhaiThu() {
-        return tienPhaiThu;
-    }
-
-    public void setTienPhaiThu(BigDecimal tienPhaiThu) {
-        this.tienPhaiThu = tienPhaiThu;
-    }
-
-    public int getSoDiemDuocTich() {
-        return soDiemDuocTich;
-    }
-
-    public void setSoDiemDuocTich(int soDiemDuocTich) {
-        this.soDiemDuocTich = soDiemDuocTich;
-    }
-
-    public BigDecimal getTongTienTruocThue() {
-        return tongTienTruocThue;
-    }
-
-    public void setTongTienTruocThue(BigDecimal tongTienTruocThue) {
-        this.tongTienTruocThue = tongTienTruocThue;
-    }
-
-    public BigDecimal getTongTienThue() {
-        return tongTienThue;
-    }
-
-    public void setTongTienThue(BigDecimal tongTienThue) {
-        this.tongTienThue = tongTienThue;
-    }
-
-    public BigDecimal getTongTien() {
-        return tongTien;
-    }
-
-    public void setTongTien(BigDecimal tongTien) {
-        this.tongTien = tongTien;
+    // 10. Xác nhận thanh toán
+    public void xacNhanThanhToan() {
+        this.trangThai = TrangThaiHoaDon.DA_THANH_TOAN;
     }
 }

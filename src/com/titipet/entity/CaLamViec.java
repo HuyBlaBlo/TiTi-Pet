@@ -82,4 +82,17 @@ public class CaLamViec {
 
     public CaLamViec() {
     }
+
+    @Override
+    public String toString() {
+        return "CaLamViec{" +
+                "maCa='" + maCa + '\'' +
+                ", nhanVien=" + nhanVien +
+                ", thoiGianBatDau=" + thoiGianBatDau +
+                ", thoiGianKetThuc=" + thoiGianKetThuc +
+                ", tienDauCa=" + tienDauCa +
+                ", trangThai=" + trangThai +
+                ", ghiChu='" + ghiChu + '\'' +
+                '}';
+    }
 }

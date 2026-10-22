@@ -3,6 +3,7 @@ package com.titipet.entity;
 import com.titipet.entity.enums.TrangThaiThucHien;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 public class ChiTietHoaDon_DichVu {
     private long maChiTietDichVu;
@@ -130,5 +131,42 @@ public class ChiTietHoaDon_DichVu {
 
     public void setTienThue(BigDecimal tienThue) {
         this.tienThue = tienThue;
+    }
+
+
+    // 1. Tính tiền trước thuế, chưa giảm giá
+    public BigDecimal tinhTienTruocThue() {
+        if (!giaDaBaoGomThue) {
+            return donGia;
+        }
+
+        BigDecimal heSoThue = BigDecimal.ONE.add(
+                thueSuat.divide(BigDecimal.valueOf(100))
+        );
+
+        return donGia.divide(
+                heSoThue, 2, RoundingMode.HALF_UP
+        );
+    }
+
+    // 2. Tính giá trị sau giảm, trước thuế
+    public BigDecimal tinhGiaTriSauGiam() {
+        BigDecimal ketQua = tinhTienTruocThue()
+                .subtract(tienGiamPhanBo);
+
+        return ketQua.max(BigDecimal.ZERO);
+    }
+
+    // 3. Tính tiền thuế
+    public BigDecimal tinhTienThue() {
+        return tinhGiaTriSauGiam()
+                .multiply(thueSuat)
+                .divide(BigDecimal.valueOf(100),2, RoundingMode.HALF_UP);
+    }
+
+    // 4. Tính thành tiền sau thuế
+    public BigDecimal tinhThanhTien() {
+        return tinhGiaTriSauGiam()
+                .add(tinhTienThue());
     }
 }

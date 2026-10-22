@@ -1,6 +1,7 @@
 package com.titipet.entity;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 public class ChiTietHoaDon_SanPham {
     private HoaDon hoaDon;
@@ -98,5 +99,52 @@ public class ChiTietHoaDon_SanPham {
 
     public void setTienThue(BigDecimal tienThue) {
         this.tienThue = tienThue;
+    }
+
+    // 1. Tính tiền trước thuế
+    public BigDecimal tinhTienTruocThue() {
+        BigDecimal tong = donGia.multiply(
+                BigDecimal.valueOf(soLuong)
+        );
+        if (!giaDaBaoGomThue) {
+            return tong;
+        }
+        BigDecimal heSoThue = BigDecimal.ONE.add(
+                thueSuat.divide(BigDecimal.valueOf(100))
+        );
+
+        return tong.divide(
+                heSoThue, 2, RoundingMode.HALF_UP
+        );
+    }
+
+    // 2. Tính giá trị sau giảm
+    public BigDecimal tinhGiaTriSauGiam() {
+        BigDecimal ketQua = tinhTienTruocThue()
+                .subtract(tienGiamPhanBo);
+
+        return ketQua.max(BigDecimal.ZERO);
+    }
+
+    // 3. Tính tiền thuế
+    public BigDecimal tinhTienThue() {
+        return tinhGiaTriSauGiam()
+                .multiply(thueSuat)
+                .divide(
+                        BigDecimal.valueOf(100),
+                        2,
+                        RoundingMode.HALF_UP
+                );
+    }
+
+    // 4. Tính tiền sau thuế
+    public BigDecimal tinhTienSauThue() {
+        return tinhGiaTriSauGiam()
+                .add(tinhTienThue());
+    }
+
+    // 5. Tính thành tiền
+    public BigDecimal tinhThanhTien() {
+        return tinhTienSauThue();
     }
 }

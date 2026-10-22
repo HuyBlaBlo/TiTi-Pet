@@ -81,4 +81,17 @@ public class DichVuSpa {
     public void setDangHoatDong(boolean dangHoatDong) {
         this.dangHoatDong = dangHoatDong;
     }
+
+    @Override
+    public String toString() {
+        return "DichVuSpa{" +
+                "maDichVu='" + maDichVu + '\'' +
+                ", tenDichVu='" + tenDichVu + '\'' +
+                ", donGiaCoBan=" + donGiaCoBan +
+                ", thueSuat=" + thueSuat +
+                ", giaDaBaoGomThue=" + giaDaBaoGomThue +
+                ", loaiThuCungApDung=" + loaiThuCungApDung +
+                ", dangHoatDong=" + dangHoatDong +
+                '}';
+    }
 }
