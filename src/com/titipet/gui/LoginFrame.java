@@ -34,10 +34,10 @@ public class LoginFrame extends JFrame {
     private static final int BREAKPOINT = 850;
 
     public LoginFrame(AuthService authService) {
-        super("TiTiPet - Đăng nhập");
+        setTitle("TiTiPet - Đăng nhập");
         LoginView view = new LoginView(Objects.requireNonNull(authService));
 
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
         setContentPane(view);
         getRootPane().setDefaultButton(view.btnDangNhap);
         GraphicsConfiguration configuration = getGraphicsConfiguration();
