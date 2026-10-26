@@ -657,5 +657,5 @@ public class KhachHangPanel extends JPanel{
             return maKH;
         }
     }
-    
+
 }
