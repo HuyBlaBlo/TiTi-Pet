@@ -5,6 +5,7 @@ import com.titipet.bus.AuthService;
 import com.titipet.entity.enums.VaiTro;
 import com.titipet.gui.component.SidebarPanel;
 import com.titipet.gui.component.TopBarPanel;
+import com.titipet.gui.panel.KhachHangPanel;
 
 import javax.swing.*;
 import java.awt.*;
@@ -52,6 +53,8 @@ public class MainFrame extends JFrame {
         topBar = new TopBarPanel(tenNhanVien, vaiTro, this::dangXuat);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         taoGiaoDien();
+        // Thêm các pannel
+        dangKyPanel(KHACH_HANG, new KhachHangPanel());
         hienThiManHinh(TRANG_CHU);
         cauHinhCuaSo();
     }
