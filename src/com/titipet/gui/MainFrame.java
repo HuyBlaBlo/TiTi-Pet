@@ -89,8 +89,8 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * Gọi trên Swing EDT sau khi panel nghiệp vụ đã được xây dựng.
-     * Ví dụ: frame.dangKyPanel(MainFrame.BAN_HANG, new BanHangPanel());
+     * gọi các panel sau
+     * frame.dangKyPanel(MainFrame.BAN_HANG,new BangHangPanel())
      */
     public void dangKyPanel(String maManHinh, JPanel panel) {
         kiemTraMaManHinh(maManHinh);
@@ -114,7 +114,8 @@ public class MainFrame extends JFrame {
         contentPanel.repaint();
     }
 
-    /** Đổi menu, tiêu đề và panel; màn hình chưa gắn panel sẽ có nền trống. */
+    /** ddổi menu, tiêu đề và panel
+     * màn hình chưa gắn panel sẽ có nền trống */
     public void hienThiManHinh(String maManHinh) {
         kiemTraMaManHinh(maManHinh);
         manHinhHienTai = maManHinh;
@@ -148,9 +149,4 @@ public class MainFrame extends JFrame {
         dispose();
     }
 
-    /** Xem riêng khung giao diện, không cần kết nối database. */
-    public static void main(String[] args) {
-        FlatLightLaf.setup();
-        SwingUtilities.invokeLater(() -> new MainFrame(new AuthService()).setVisible(true));
-    }
 }

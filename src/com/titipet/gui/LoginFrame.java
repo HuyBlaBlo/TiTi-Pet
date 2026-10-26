@@ -341,13 +341,12 @@ public class LoginFrame extends JFrame {
                     txtMatKhau.setEditable(true);
                     btnDangNhap.setText("ĐĂNG NHẬP");
                     try {
-                        NhanVien employee = get();
+                        get();
                         lblThongBao.setText(" ");
                         txtMatKhau.setText("");
-                        JOptionPane.showMessageDialog(LoginView.this,
-                                "Đăng nhập thành công!\nXin chào: " + employee.getHoTen()
-                                        + "\nVai trò: " + employee.getVaiTro(),
-                                "TiTiPet", JOptionPane.INFORMATION_MESSAGE);
+                        MainFrame mainFrame = new MainFrame(authService);
+                        mainFrame.setVisible(true);
+                        SwingUtilities.getWindowAncestor(LoginView.this).dispose();
                     } catch (InterruptedException exception) {
                         Thread.currentThread().interrupt();
                         showError("Đăng nhập bị gián đoạn.");

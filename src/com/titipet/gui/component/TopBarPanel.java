@@ -24,7 +24,7 @@ public class TopBarPanel extends JPanel {
         add(taoTimKiem(), BorderLayout.CENTER);
         add(taoTaiKhoan(tenNhanVien, vaiTro, onLogout), BorderLayout.EAST);
 
-        // Cửa sổ hẹp ưu tiên tiêu đề và tài khoản thay vì bóp nhỏ ô tìm kiếm.
+        // cửa sổ hẹp ưu tiên tiêu đề và tài khoản thay vì bóp nhỏ ô tìm kiếm
         addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent event) {
@@ -55,7 +55,7 @@ public class TopBarPanel extends JPanel {
         searchField.putClientProperty("JTextField.placeholderText", "Tìm khách hàng, thú cưng, hóa đơn...");
         searchField.putClientProperty("FlatLaf.style",
                 "arc: 20; borderWidth: 1; borderColor: #E8EEF7; focusWidth: 1; margin: 8,14,8,14");
-        // Chưa nối tìm kiếm vào các module nghiệp vụ.
+
         searchField.setEditable(false);
         searchField.setFocusable(false);
         center.add(searchField);
@@ -98,6 +98,7 @@ public class TopBarPanel extends JPanel {
     }
 
     public void setTieuDe(String title) {
+
         currentPage.setText(title);
     }
 }

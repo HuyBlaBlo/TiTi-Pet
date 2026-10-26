@@ -164,7 +164,7 @@ public class SidebarPanel extends RoundedPannelLinear {
         return label;
     }
 
-    // Cùng một hàm tải ảnh dùng cho sidebar và top bar, hỗ trợ cả IDE và classpath.
+    // hàm tải ảnh dùng cho sidebar và top bar
     static ImageIcon taiIcon(String fileName, int size, Color tint) {
         String resourcePath = "icons/sidebar/" + fileName;
         try {
