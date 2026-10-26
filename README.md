@@ -151,3 +151,13 @@
     - Quét chọn tất cả file `.jar` trong thư mục `lib/` -> Chọn **Add as Library** (hoặc _Add to Build Path_).
 4.  Vào class `ConnectDB`, sửa lại thông tin tài khoản SQL Server của máy (Mật khẩu rồi tên đăng nhập).
 5.  Chạy class `Main.java` để khởi động ứng dụng
+
+### Chạy Swing trên Hyprland/Wayland
+
+Trong IntelliJ, chọn cấu hình **TiTiPet - Main** để chạy ứng dụng hoặc
+**TiTiPet - Login Preview** để xem riêng màn hình đăng nhập.
+Hai cấu hình trong `.run/` đã đặt biến môi trường
+`_JAVA_AWT_WM_NONREPARENTING=1` để Java nhận đúng sự kiện thay đổi kích thước cửa sổ.
+Nếu dùng cấu hình chạy riêng, thêm biến này trong **Run → Edit Configurations → Environment variables**,
+rồi dừng và chạy lại ứng dụng. Đây là biến môi trường, không phải VM option.
+Tham khảo [cách OpenJDK nhận diện window manager](https://github.com/openjdk/jdk/blob/jdk-25-ga/src/java.desktop/unix/classes/sun/awt/X11/XWM.java#L565-L571).
