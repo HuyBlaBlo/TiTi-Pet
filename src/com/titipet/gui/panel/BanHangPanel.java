@@ -3,6 +3,7 @@ package com.titipet.gui.panel;
 import com.titipet.bus.BanHangKhachHangService;
 import com.titipet.bus.BanHangService;
 import com.titipet.bus.BanHangTinhTienService;
+import com.titipet.bus.BanHangThanhToanService;
 import com.titipet.entity.KhachHangBanHang;
 import com.titipet.entity.SanPhamBanHang;
 import com.titipet.gui.PosUI;
@@ -41,6 +42,9 @@ public class BanHangPanel extends JPanel {
     private final BanHangService sales;
     private final BanHangKhachHangService customerService;
     private final BanHangTinhTienService billing = new BanHangTinhTienService();
+    private final BanHangThanhToanService thanhToanService = new BanHangThanhToanService();
+    private String maNhanVienDangNhap;
+    public void setMaNhanVienDangNhap(String maNV) { this.maNhanVienDangNhap = maNV;}
     private List<SanPhamBanHang> products = new ArrayList<>();
     private KhachHangBanHang customer;
     private String selectedCategory = "Tất cả";
@@ -674,85 +678,143 @@ public class BanHangPanel extends JPanel {
     }
 
     /** Calculator preview: no database writes, payment remains the responsibility of HoaDonService. */
-    private void showPaymentCalculation() {
-        if (sales.layGioHang().isEmpty()) {
-            message("Giỏ hàng đang trống. Hãy thêm sản phẩm trước khi tính tiền.");
-            return;
-        }
-        int pointsRequested;
-        try { pointsRequested = Integer.parseInt(pointInput.getText().trim()); }
-        catch (NumberFormatException ex) { message("Điểm sử dụng phải là số nguyên không âm."); return; }
-        if (pointsRequested < 0) { message("Điểm sử dụng không được âm."); return; }
-        BanHangTinhTienService.KetQua result = billing.uocTinh(
-                sales.tinhTongTienHang(), customer, pointsRequested);
 
-        JPanel content = new JPanel();
-        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-        content.setBorder(BorderFactory.createEmptyBorder(9, 9, 9, 9));
-        content.add(PosUI.text("THÔNG TIN TÍNH TIỀN", 12, true, BLUE));
-        content.add(PosUI.space(12));
-        content.add(amountLine("Tạm tính", PosUI.text(money(result.tamTinh()), 12, true, NAVY)));
-        content.add(PosUI.space(8));
-        content.add(amountLine("Giảm hạng thành viên", PosUI.text("− " + money(result.giamHang()), 12, true, NAVY)));
-        content.add(PosUI.space(8));
-        content.add(amountLine("Giảm điểm (" + result.diemSuDung() + " điểm)",
-                PosUI.text("− " + money(result.giamDiem()), 12, true, NAVY)));
-        content.add(PosUI.space(10));
-        content.add(amountLineStrong("Cần thanh toán", PosUI.text(money(result.phaiThu()), 18, true, BLUE)));
-        content.add(PosUI.space(12));
-        String method = (String) paymentMethod.getSelectedItem();
-        content.add(PosUI.text("Hình thức: " + method, 12, true, NAVY));
-        content.add(PosUI.space(8));
-        if ("Tiền mặt".equals(method)) {
-            content.add(PosUI.text("Tiền khách đưa (VNĐ):", 12, false, NAVY));
-            content.add(PosUI.space(5));
-            JTextField received = PosUI.field("Ví dụ: 100000 hoặc 100.000");
-            received.setText(result.phaiThu().toBigInteger().toString());
-            received.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
-            content.add(received);
-            content.add(PosUI.space(9));
-            JLabel change = PosUI.text("Tiền thối lại: 0 ₫", 15, true, BLUE);
-            content.add(change);
-            Runnable update = () -> {
-                try {
-                    BigDecimal rest = billing.tinhTienThua(result.phaiThu(), received.getText());
-                    if (rest.signum() < 0) {
-                        change.setForeground(PosUI.RED);
-                        change.setText("Còn thiếu: " + money(rest.negate()));
-                    } else {
-                        change.setForeground(BLUE);
-                        change.setText("Tiền thối lại: " + money(rest));
-                    }
-                } catch (IllegalArgumentException exception) {
-                    change.setForeground(PosUI.RED);
-                    change.setText("Vui lòng nhập số tiền hợp lệ.");
-                }
-            };
-            received.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-                @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { update.run(); }
-                @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { update.run(); }
-                @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { update.run(); }
-            });
-            update.run();
-        }
-        content.add(PosUI.space(14));
-        JLabel warning = PosUI.text("CHƯA GHI HÓA ĐƠN VÀO SQL SERVER", 11, true, PosUI.RED);
-        content.add(warning);
-        content.add(PosUI.space(5));
-        JTextArea note = new JTextArea("Đây là bảng tính tạm. Chức năng xác nhận giao dịch, trừ kho, cập nhật điểm và VAT cần được tích hợp với ca làm việc và tài khoản nhân viên trong module Hóa đơn.");
-        note.setEditable(false);
-        note.setFocusable(false);
-        note.setOpaque(false);
-        note.setLineWrap(true);
-        note.setWrapStyleWord(true);
-        note.setFont(PosUI.SMALL);
-        note.setForeground(MUTED);
-        note.setPreferredSize(new Dimension(420, 68));
-        content.add(note);
-        JOptionPane.showMessageDialog(this, content, "TiTi Pet — Bảng tính thanh toán",
-                JOptionPane.PLAIN_MESSAGE);
-        status.setText("Đã tính tiền cho " + sales.layGioHang().size() + " mặt hàng · chưa lưu giao dịch");
+private void showPaymentCalculation() {
+
+    if (sales.layGioHang().isEmpty()) {
+        message("Giỏ hàng đang trống.");
+        return;
     }
+
+    if (customer == null) {
+        message("Vui lòng chọn khách hàng trước khi thanh toán.");
+        return;
+    }
+
+    if (maNhanVienDangNhap == null ||
+            maNhanVienDangNhap.isBlank()) {
+        message("Chưa xác định nhân viên đăng nhập.");
+        return;
+    }
+
+    try {
+        int diem = Integer.parseInt(pointInput.getText().trim());
+
+        BanHangTinhTienService.KetQua kq =
+            billing.tinhChinhXac(
+                sales.tinhTongTienHang(), customer, diem);
+
+        String phuongThucText =
+            (String) paymentMethod.getSelectedItem();
+
+        String nguonText =
+            (String) orderSource.getSelectedItem();
+
+        String phuongThuc = switch (phuongThucText) {
+            case "Tiền mặt" -> "TIEN_MAT";
+            case "Chuyển khoản" -> "CHUYEN_KHOAN";
+            case "Qua sàn" -> "QUA_SAN";
+            default -> throw new IllegalArgumentException(
+                "Phương thức thanh toán không hợp lệ.");
+        };
+
+        String nguonDon = switch (nguonText) {
+            case "Tại quầy" -> "TAI_QUAY";
+            case "Shopee" -> "SHOPEE";
+            case "TikTok" -> "TIKTOK";
+            default -> throw new IllegalArgumentException(
+                "Nguồn đơn hàng không hợp lệ.");
+        };
+
+        BigDecimal tienKhachDua = null;
+
+        if ("TIEN_MAT".equals(phuongThuc)) {
+            String nhap = JOptionPane.showInputDialog(
+                this,
+                "Cần thanh toán: " + money(kq.phaiThu())
+                    + "\nNhập số tiền khách đưa:",
+                kq.phaiThu().toBigInteger().toString()
+            );
+
+            if (nhap == null) return;
+
+            nhap = nhap.strip()
+                .replace(".", "")
+                .replace(" ", "");
+
+            if (!nhap.matches("[0-9]+")) {
+                throw new IllegalArgumentException(
+                    "Tiền khách đưa không hợp lệ.");
+            }
+
+            tienKhachDua = new BigDecimal(nhap);
+
+            if (tienKhachDua.compareTo(kq.phaiThu()) < 0) {
+                message("Khách đưa chưa đủ tiền.");
+                return;
+            }
+        }
+
+        int xacNhan = JOptionPane.showConfirmDialog(
+            this,
+            "Khách hàng: " + customer.hoTen()
+                + "\nTổng tiền: " + money(kq.tamTinh())
+                + "\nGiảm hạng: " + money(kq.giamHang())
+                + "\nGiảm điểm: " + money(kq.giamDiem())
+                + "\nCần thu: " + money(kq.phaiThu())
+                + "\nHình thức: " + phuongThucText
+                + "\n\nXác nhận khách đã thanh toán?",
+            "Xác nhận thanh toán",
+            JOptionPane.YES_NO_OPTION
+        );
+
+        if (xacNhan != JOptionPane.YES_OPTION) return;
+
+        // Chuyển dữ liệu xuống tầng nghiệp vụ.
+        // Không thực hiện SQL trong giao diện.
+        String maHD = thanhToanService.thanhToan(
+            customer.maKH(),
+            maNhanVienDangNhap,
+            nguonDon,
+            phuongThuc,
+            diem,
+            sales.layGioHang(),
+            tienKhachDua
+        );
+
+        BigDecimal tienThua = BigDecimal.ZERO;
+
+        if (tienKhachDua != null) {
+            tienThua = tienKhachDua.subtract(kq.phaiThu());
+        }
+
+        JOptionPane.showMessageDialog(
+            this,
+            "Thanh toán thành công!"
+                + "\nMã hóa đơn: " + maHD
+                + "\nTiền thừa dự tính: " + money(tienThua),
+            "TiTi Pet - Thanh toán",
+            JOptionPane.INFORMATION_MESSAGE
+        );
+
+        sales.xoaToanBoGio();
+        pointInput.setText("0");
+        setCustomer(null);
+        refreshCart();
+        loadProducts();
+
+        status.setText("Đã lưu hóa đơn: " + maHD);
+
+    } catch (NumberFormatException ex) {
+        message("Số điểm phải là số nguyên hợp lệ.");
+
+    } catch (IllegalArgumentException | IllegalStateException ex) {
+        JOptionPane.showMessageDialog(
+            this, ex.getMessage(),
+            "Lỗi thanh toán", JOptionPane.ERROR_MESSAGE);
+    }
+}
+
 
     private String money(BigDecimal amount) {
         if (amount == null) return "0 ₫";
@@ -764,7 +826,5 @@ public class BanHangPanel extends JPanel {
     }
 
     /** Chạy độc lập với khung sidebar và topbar giống bản mẫu. */
-    public static void main(String[] args) {
-        com.titipet.gui.BanHangPOSDemoFrame.main(args);
-    }
+
 }
