@@ -23,13 +23,13 @@ BEGIN TRY
     USING (VALUES
         ('NV_TEST_QL', 'admin',
          '$2a$12$.djq6oBiz9DVfdAcKBJKaOw3dY4SrbhlMNum/TBdus9CAsaBqhpnO',
-         N'Nguyễn Minh Quản', 'QUAN_LY', CAST(1 AS BIT)),
+         N'Anh Ba ', 'QUAN_LY', CAST(1 AS BIT)),
         ('NV_TEST_TN', 'thungan',
          '$2a$12$rJbf2YSDbVuHs.k6hhwGbefEdhubhnK3eIjAzQgh4PmmoZv4nS9jW',
-         N'Trần Thị Ngân', 'THU_NGAN', CAST(1 AS BIT)),
+         N'Chú Ba Duy', 'THU_NGAN', CAST(1 AS BIT)),
         ('NV_TEST_SPA', 'thospa',
          '$2a$12$bNoIqj0Ij8Kktu6rl1jGo.Sws17jka58YmsnHpITMp1GEl9gcsjTa',
-         N'Lê Hoàng Spa', 'THO_SPA', CAST(1 AS BIT)),
+         N'Chị ', 'THO_SPA', CAST(1 AS BIT)),
         ('NV_TEST_LOCK', 'locked',
          '$2a$12$30RHRSmlOvTw.x8yigTbyuoOi4BzLdg399/2JwIoqjSJ3/9ExBD52',
          N'Tài Khoản Bị Khóa', 'THU_NGAN', CAST(0 AS BIT))
