@@ -1,33 +1,50 @@
 package com.titipet.gui.panel;
 
+import com.titipet.bus.AuthService;
 import com.titipet.bus.KhachHangService;
 import com.titipet.connectDB.ConnectDB;
 import com.titipet.entity.enums.HangTV;
+import com.titipet.entity.enums.VaiTro;
 import com.titipet.gui.dialog.ThemKhachHangDialog;
 import com.titipet.gui.dialog.CapNhatKhachHangDialog;
 import com.titipet.util.RoundedPannel;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.util.List;
 
+/**
+ * KhachHangPanel: Màn hình quản lý khách hàng & thẻ VIP.
+ * - Tích hợp phân quyền theo vai trò (Thợ Spa không được thêm khách hàng).
+ * - Thanh tìm kiếm phong cách Live Search (gõ đến đâu lọc đến đó).
+ */
 public class KhachHangPanel extends JPanel{
 	
 	// Đối tượng tầng nghiệp vụ (BUS) để gọi dữ liệu
     private final KhachHangService khachHangService;
+    private AuthService authService;
+    private VaiTro vaiTroHienTai;
+    
+    // Nút chức năng phân quyền
+    private JButton btnThemKhachHang;
 	
-    // Các thành phần tương tác trên form
-    private JTextField txtTimKiem;            // Ô nhập từ khóa tìm kiếm (Tên/SĐT)
-    private JTable tblKhachHang;              // Bảng hiển thị danh sách khách hàng
-    private DefaultTableModel tableModel;     // Quản lý dữ liệu dòng/cột của bảng
+    // Thanh tìm kiếm
+    private JTextField txtTimKiem;           
+    private JLabel lblClearSearch;
 
-    // Các nhãn hiển thị số lượng trên 4 thẻ thống kê (KPI) phía trên
+    // Bảng dữ liệu và KPI
+    private JTable tblKhachHang;
+    private DefaultTableModel tableModel;
     private JLabel lblTongThanhVien;
     private JLabel lblHangBac;
     private JLabel lblHangVang;
@@ -45,19 +62,38 @@ public class KhachHangPanel extends JPanel{
     private static final Color COLOR_TEXT_DARK = new Color(30, 41, 59);         // Màu chữ đen đậm tiêu đề
     private static final Color COLOR_TEXT_MUTED = new Color(100, 116, 139);     // Màu chữ phụ/mờ
     private static final Color COLOR_BORDER = new Color(226, 232, 240);         // Màu đường viền khung input, bảng
-
+    private static final Color COLOR_FB_SEARCH_BG = new Color(240, 242, 245); // Nền xám nhạt
+    
     // Định dạng số tiền (Ví dụ: 2,400,000 đ)
     private final DecimalFormat dfTien = new DecimalFormat("#,##0 đ");
 
     /**
-     * Hàm khởi tạo: Thiết lập layout, dựng các khối giao diện và tải dữ liệu ban đầu
+     * Constructor chính: Được gọi từ MainFrame(authService)
      */
-    public KhachHangPanel() {
-        // Khởi tạo đối tượng tầng nghiệp vụ
+    public KhachHangPanel(AuthService authService) {
+        this.authService = authService;
         this.khachHangService = new KhachHangService();
-        // Dựng các thành phần giao diện
+
+        // Lấy vai trò an toàn từ Optional<NhanVien> của AuthService
+        if (authService != null && authService.getNhanVienDangNhap().isPresent()) {
+            this.vaiTroHienTai = authService.getNhanVienDangNhap().get().getVaiTro();
+        } else {
+            this.vaiTroHienTai = VaiTro.QUAN_LY;
+        }
+
         initComponents();
-        // Nạp toàn bộ dữ liệu khách hàng từ SQL Server lên bảng
+        apDungPhanQuyen();
+        loadData("");
+    }
+    
+    /**
+     * Constructor phụ: Truyền trực tiếp vai trò
+     */
+    public KhachHangPanel(VaiTro vaiTroNguoiDung) {
+        this.vaiTroHienTai = (vaiTroNguoiDung != null) ? vaiTroNguoiDung : VaiTro.QUAN_LY;
+        this.khachHangService = new KhachHangService();
+        initComponents();
+        apDungPhanQuyen();
         loadData("");
     }
 
@@ -155,6 +191,23 @@ public class KhachHangPanel extends JPanel{
         panel.add(rightActions, BorderLayout.EAST);
         return panel;
     }
+    
+    /**
+     * Phương thức public để thành viên làm module "Mở ca / Chốt ca"
+     * có thể gọi cập nhật trạng thái từ MainFrame mà không cần can thiệp code nội bộ.
+     */
+    public void capNhatTrangThaiCa(boolean daMoCa) {
+        if (daMoCa) {
+            statusBadge.setBackground(new Color(220, 252, 231)); // Nền xanh lá nhạt
+            lblTrangThaiCa.setText("● Đang trong ca");
+            lblTrangThaiCa.setForeground(new Color(22, 163, 74)); // Chữ xanh lá
+        } else {
+            statusBadge.setBackground(new Color(254, 243, 199)); // Nền vàng cam
+            lblTrangThaiCa.setText("● Chưa mở ca");
+            lblTrangThaiCa.setForeground(new Color(217, 119, 6)); // Chữ vàng cam
+        }
+        statusBadge.repaint();
+    }
 
     // KHỐI 2: 4 THẺ THỐNG KÊ (METRICS KPI)
     /**
@@ -251,58 +304,92 @@ public class KhachHangPanel extends JPanel{
         leftTitle.add(Box.createVerticalStrut(2));
         leftTitle.add(lblTableSub);
 
-        // Nút mở hộp thoại thêm mới khách hàng
-        JButton btnThem = new JButton("+ Thêm khách hàng");
-        btnThem.setBackground(COLOR_PRIMARY_BLUE);
-        btnThem.setForeground(Color.WHITE);
-        btnThem.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        btnThem.setFocusPainted(false);
-        btnThem.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnThem.setBorder(new EmptyBorder(10, 18, 10, 18));
-        btnThem.addActionListener(e -> moDialogThemKhachHang());
+        // Nút thêm khách hàng (được phân quyền ẩn/hiện)
+        btnThemKhachHang = new JButton("+ Thêm khách hàng");
+        btnThemKhachHang.setBackground(COLOR_PRIMARY_BLUE);
+        btnThemKhachHang.setForeground(Color.WHITE);
+        btnThemKhachHang.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnThemKhachHang.setFocusPainted(false);
+        btnThemKhachHang.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnThemKhachHang.setBorder(new EmptyBorder(10, 18, 10, 18));
+        btnThemKhachHang.addActionListener(e -> moDialogThemKhachHang());
 
         topBar.add(leftTitle, BorderLayout.WEST);
-        topBar.add(btnThem, BorderLayout.EAST);
+        topBar.add(btnThemKhachHang, BorderLayout.EAST);
 
         //3.2. THANH TÌM KIẾM VÀ CÁC THAO TÁC XUẤT DỮ LIỆU
-        JPanel searchBar = new JPanel(new BorderLayout(10, 0));
-        searchBar.setOpaque(false);
+        JPanel searchBarRow = new JPanel(new BorderLayout(12, 0));
+        searchBarRow.setOpaque(false);
 
-        // Ô nhập từ khóa tìm kiếm (họ tên hoặc SĐT)
-        txtTimKiem = new JTextField();
-        txtTimKiem.setPreferredSize(new Dimension(0, 38));
+        // Hộp tìm kiếm hình viên thuốc (pill-shape) xám nhạt bo 20px
+        RoundedPannel searchBox = new RoundedPannel(COLOR_FB_SEARCH_BG, 20);
+        searchBox.setPreferredSize(new Dimension(0, 42));
+        searchBox.setLayout(new BorderLayout(8, 0));
+        searchBox.setBorder(new EmptyBorder(0, 14, 0, 14));
+
+        JLabel lblSearchIcon = new JLabel("🔍");
+        lblSearchIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 14));
+        lblSearchIcon.setForeground(COLOR_TEXT_MUTED);
+
+        txtTimKiem = new JTextField() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                if (getText().isEmpty() && !(FocusManager.getCurrentKeyboardFocusManager().getFocusOwner() == this)) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+                    g2.setColor(COLOR_TEXT_MUTED);
+                    g2.drawString("Tìm kiếm theo tên khách hàng hoặc số điện thoại...", 5, getHeight() / 2 + 5);
+                    g2.dispose();
+                }
+            }
+        };
+        txtTimKiem.setOpaque(false);
+        txtTimKiem.setBorder(null);
         txtTimKiem.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        txtTimKiem.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(COLOR_BORDER, 1),
-                new EmptyBorder(0, 12, 0, 12)
-        ));
+        txtTimKiem.setForeground(COLOR_TEXT_DARK);
 
-        //Nút tìm kiếm
-        JPanel searchActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        searchActions.setOpaque(false);
+        lblClearSearch = new JLabel("X");
+        lblClearSearch.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblClearSearch.setForeground(COLOR_TEXT_MUTED);
+        lblClearSearch.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        lblClearSearch.setVisible(false);
+        lblClearSearch.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                txtTimKiem.setText("");
+                txtTimKiem.requestFocus();
+            }
+        });
 
-        JButton btnTim = new JButton("Tìm");
-        btnTim.setPreferredSize(new Dimension(80, 38));
-        btnTim.setBackground(new Color(241, 245, 249));
-        btnTim.setForeground(COLOR_TEXT_DARK);
-        btnTim.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnTim.setFocusPainted(false);
-        btnTim.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        // Gắn sự kiện: Nhấn tìm sẽ tải lại dữ liệu theo từ khóa người dùng nhập
-        btnTim.addActionListener(e -> loadData(txtTimKiem.getText()));
+        // LIVE SEARCH: Lọc bảng ngay khi gõ từng phím
+        txtTimKiem.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) { xuLyTimKiem(); }
+            @Override
+            public void removeUpdate(DocumentEvent e) { xuLyTimKiem(); }
+            @Override
+            public void changedUpdate(DocumentEvent e) { xuLyTimKiem(); }
 
-        searchActions.add(btnTim);
+            private void xuLyTimKiem() {
+                String kw = txtTimKiem.getText().trim();
+                lblClearSearch.setVisible(!kw.isEmpty());
+                loadData(kw);
+            }
+        });
 
-        searchBar.add(txtTimKiem, BorderLayout.CENTER);
-        searchBar.add(searchActions, BorderLayout.EAST);
+        searchBox.add(lblSearchIcon, BorderLayout.WEST);
+        searchBox.add(txtTimKiem, BorderLayout.CENTER);
+        searchBox.add(lblClearSearch, BorderLayout.EAST);
 
-        // Gom cụm thanh tiêu đề và thanh tìm kiếm
+        searchBarRow.add(searchBox, BorderLayout.CENTER);
+
         JPanel cardHeaderGroup = new JPanel();
         cardHeaderGroup.setLayout(new BoxLayout(cardHeaderGroup, BoxLayout.Y_AXIS));
         cardHeaderGroup.setOpaque(false);
         cardHeaderGroup.add(topBar);
         cardHeaderGroup.add(Box.createVerticalStrut(14));
-        cardHeaderGroup.add(searchBar);
+        cardHeaderGroup.add(searchBarRow);
 
         card.add(cardHeaderGroup, BorderLayout.NORTH);
 
@@ -353,6 +440,27 @@ public class KhachHangPanel extends JPanel{
 
         return card;
     }
+   
+    // 4. LOGIC PHÂN QUYỀN
+    /**
+     * PHÂN QUYỀN: Thợ Spa không được phép thêm khách hàng
+     */
+    private void apDungPhanQuyen() {
+        boolean laThoSpa;
+        if (authService != null) {
+            laThoSpa = authService.coVaiTro(VaiTro.THO_SPA);
+        } else {
+            laThoSpa = (vaiTroHienTai == VaiTro.THO_SPA);
+        }
+
+        // Ẩn nút đối với Thợ Spa, hiển thị cho Quản lý và Thu ngân
+        btnThemKhachHang.setVisible(!laThoSpa);
+    }
+
+    public void setVaiTroHienTai(VaiTro vaiTroMoi) {
+        this.vaiTroHienTai = vaiTroMoi;
+        apDungPhanQuyen();
+    }
     
     /**
      * Tự động duyệt qua toàn bộ dữ liệu từng dòng để tính toán bề rộng lý tưởng cho từng cột,
@@ -384,7 +492,7 @@ public class KhachHangPanel extends JPanel{
         }
     }
 
-    // 4. PHƯƠNG THỨC TẢI VÀ NẠP DỮ LIỆU TỪ TẦNG NGHIỆP VỤ (BUS)
+    // 5. PHƯƠNG THỨC TẢI VÀ NẠP DỮ LIỆU TỪ TẦNG NGHIỆP VỤ (BUS)
     /**
      * Tải dữ liệu từ database thông qua tầng BUS, đổ lên JTable và tính toán lại 4 thẻ KPI[cite: 1]
      * @param keyword Từ khóa tìm kiếm (họ tên hoặc SĐT)
@@ -442,11 +550,12 @@ public class KhachHangPanel extends JPanel{
     private void moDialogThemKhachHang() {
         ThemKhachHangDialog dialog = new ThemKhachHangDialog((Frame) SwingUtilities.getWindowAncestor(this), khachHangService);
         dialog.setVisible(true);
+        txtTimKiem.setText(""); // Xóa text trên ô tìm kiếm
         // Nạp lại dữ liệu để cập nhật khách hàng mới vừa thêm vào bảng
         loadData("");
     }
 
-    // 5. CÁC LỚP RENDERER ĐỊNH DẠNG TÙY BIẾN CHO JTABLE
+    // 6. CÁC LỚP RENDERER ĐỊNH DẠNG TÙY BIẾN CHO JTABLE
 
     /**
      * CustomerCellRenderer: Vẽ ô chứa avatar tròn viết tắt 2 chữ cái đầu cùng họ tên khách hàng
@@ -628,23 +737,7 @@ public class KhachHangPanel extends JPanel{
             });
         }
         
-        /**
-         * Phương thức public để thành viên làm module "Mở ca / Chốt ca"
-         * có thể gọi cập nhật trạng thái từ MainFrame mà không cần can thiệp code nội bộ.
-         */
-        public void capNhatTrangThaiCa(boolean daMoCa) {
-            if (daMoCa) {
-                statusBadge.setBackground(new Color(220, 252, 231)); // Nền xanh lá nhạt
-                lblTrangThaiCa.setText("● Đang trong ca");
-                lblTrangThaiCa.setForeground(new Color(22, 163, 74)); // Chữ xanh lá
-            } else {
-                statusBadge.setBackground(new Color(254, 243, 199)); // Nền vàng cam
-                lblTrangThaiCa.setText("● Chưa mở ca");
-                lblTrangThaiCa.setForeground(new Color(217, 119, 6)); // Chữ vàng cam
-            }
-            statusBadge.repaint();
-        }
-
+       
         @Override
         public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
             this.selectedRow = row;
@@ -657,5 +750,4 @@ public class KhachHangPanel extends JPanel{
             return maKH;
         }
     }
-    
 }
