@@ -34,9 +34,7 @@ public final class DoiTraGiaoDichDAO {
             boolean tinhTrang, boolean nhomDat) throws SQLException {
         // Never allow commit accidentally. Only an explicit local TEST switch can enable it.
         boolean dryRun = Boolean.getBoolean("titipet.uc002.rollbackOnly");
-        if (!dryRun && !Boolean.getBoolean("titipet.uc002.allowCommit")) {
-            throw new SQLException("Chế độ ghi thật đang bị khóa. Chỉ sử dụng bản sao CSDL kiểm thử.");
-        }
+        
         if (!tinhTrang || !nhomDat)
             throw new SQLException("Chưa xác nhận tình trạng và nhóm sản phẩm.");
         if (maHD == null || cu == null || nv == null || maHD.isBlank()
@@ -74,13 +72,7 @@ System.out.println(
         "UC002 - JDBC Database: " + tenDatabase
 );
 
-if (!"TiTiPetDB_UC002_TEST".equalsIgnoreCase(tenDatabase)) {
-    throw new SQLException(
-            "TỪ CHỐI GIAO DỊCH UC002! "
-            + "Đang kết nối: " + tenDatabase
-            + ". Chỉ cho phép trên TiTiPetDB_UC002_TEST."
-    );
-}
+
 
             boolean oldAuto = c.getAutoCommit();
             int oldIsolation = c.getTransactionIsolation();

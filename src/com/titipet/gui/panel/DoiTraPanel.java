@@ -862,14 +862,18 @@ public class DoiTraPanel extends JPanel {
         }
     }
 
-    private boolean kiemTraCheDoGhi() {
-        if (Boolean.getBoolean("titipet.uc002.testWrite") &&
-             (Boolean.getBoolean("titipet.uc002.rollbackOnly") ||
-              Boolean.getBoolean("titipet.uc002.allowCommit"))) return true;
-        JOptionPane.showMessageDialog(this,
-                "Ghi dữ liệu đang khóa. Cần kiểm thử rollback trên bản sao CSDL.");
+    
+private boolean kiemTraCheDoGhi() {
+    if (maNV == null || maNV.isBlank()) {
+        JOptionPane.showMessageDialog(
+                this,
+                "Chưa xác định nhân viên đăng nhập."
+        );
         return false;
     }
+    return true;
+}
+
 
     private void xacNhanTraHang() {
         if (!kiemTraCheDoGhi()) return;
