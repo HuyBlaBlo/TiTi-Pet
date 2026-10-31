@@ -89,7 +89,7 @@ public class ThuCungDAO {
             stmt.setString(1, tc.getMaThuCung());
             stmt.setString(2, tc.getChuNuoi() != null ? tc.getChuNuoi().getMaKH() : null);
             stmt.setString(3, tc.getTenThuCung());
-            stmt.setString(4, tc.getLoaiThuCung() != null ? tc.getLoaiThuCung().name() : LoaiThuCung.CHO.name());
+            stmt.setString(4, tc.getLoaiThuCung() != null ? tc.getLoaiThuCung().name() : LoaiThuCungApDung.CHO.name());
             stmt.setDouble(5, tc.getCanNang());
             stmt.setString(6, tc.getTinhTrangLong());
             stmt.setString(7, tc.getGhiChu());
@@ -112,7 +112,7 @@ public class ThuCungDAO {
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setString(1, tc.getChuNuoi() != null ? tc.getChuNuoi().getMaKH() : null);
             stmt.setString(2, tc.getTenThuCung());
-            stmt.setString(3, tc.getLoaiThuCung() != null ? tc.getLoaiThuCung().name() : LoaiThuCung.CHO.name());
+            stmt.setString(3, tc.getLoaiThuCung() != null ? tc.getLoaiThuCung().name() : LoaiThuCungApDung.CHO.name());
             stmt.setDouble(4, tc.getCanNang());
             stmt.setString(5, tc.getTinhTrangLong());
             stmt.setString(6, tc.getGhiChu());
