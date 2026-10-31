@@ -27,6 +27,13 @@ public class KhachHangService {
     }
     
     /**
+     * Lấy danh sách toàn bộ khách hàng phục vụ các ComboBox chọn chủ nuôi
+     */
+    public List<KhachHang> layTatCaKhachHang() throws Exception {
+        return khachHangDAO.layTatCaKhachHang();
+    }
+    
+    /**
      * Tra cứu khách hàng theo mã hoặc số điện thoại
      */
     public KhachHang timKhachHangTheoMaHoacSDT(String tuKhoa) throws Exception {
@@ -157,6 +164,7 @@ public class KhachHangService {
             throw new Exception("Số điện thoại không đúng định dạng (phải gồm 10 chữ số và bắt đầu bằng số 0)!");
         }
     }
+    
     
 }
 
