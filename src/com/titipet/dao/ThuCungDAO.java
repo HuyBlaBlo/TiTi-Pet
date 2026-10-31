@@ -140,7 +140,33 @@ public class ThuCungDAO {
         return "PET001";
     }
     
- // --- HÀM TRỢ GIÚP ÁNH XẠ VÀ KẾT NỐI ---
+    /**
+     * Lấy toàn bộ danh sách khách hàng (đang hoạt động) để nạp vào ComboBox
+     */
+    public List<KhachHang> layTatCaKhachHang() throws SQLException {
+        List<KhachHang> list = new ArrayList<>();
+        String sql = "SELECT maKH, hoTen, soDienThoai FROM dbo.KhachHang ORDER BY hoTen ASC";
+
+        Connection con = ConnectDB.getConnection();
+        if (con == null || con.isClosed()) {
+            ConnectDB.getInstance().connect();
+            con = ConnectDB.getConnection();
+        }
+
+        try (PreparedStatement stmt = con.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                KhachHang kh = new KhachHang();
+                kh.setMaKH(rs.getString("maKH"));
+                kh.setHoTen(rs.getString("hoTen"));
+                kh.setSoDienThoai(rs.getString("soDienThoai"));
+                list.add(kh);
+            }
+        }
+        return list;
+    }
+    
+    // --- HÀM TRỢ GIÚP ÁNH XẠ VÀ KẾT NỐI ---
     private ThuCung mapThuCung(ResultSet rs) throws SQLException {
         KhachHang chuNuoi = new KhachHang();
         chuNuoi.setMaKH(rs.getString("maKH"));
