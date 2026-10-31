@@ -56,6 +56,9 @@ public class PhieuKetCaDAO {
                     throw new SQLException("Ca chưa có hóa đơn đã thanh toán.");
                 if (tong.hoaDonChuaPhanLoai() > 0)
                     throw new SQLException("Có hóa đơn chưa xác định phương thức thanh toán.");
+                if (tong.doanhThuCKThuan().signum() < 0)
+                    throw new SQLException("Hoàn chuyển khoản vượt doanh thu chuyển khoản của ca. "
+                        + "Phiếu kết ca hiện không hỗ trợ số CK âm; cần Quản lý đối soát riêng.");
                 if (tong.doanhThuQuaSan().signum() != 0)
                     throw new SQLException("Có doanh thu QUA_SAN: phiếu hiện tại chưa có trường đối soát qua sàn. Cần nhóm thống nhất cấu trúc trước khi chốt.");
                 if (tong.tienMatDuKien().compareTo(tienMatThucTe) != 0)
@@ -93,8 +96,8 @@ public class PhieuKetCaDAO {
                         ps.setString(3, maCa);
                         ps.setBigDecimal(4, tong.tienDauCa());
                         ps.setBigDecimal(5, tienMatThucTe);
-                        ps.setBigDecimal(6, tong.doanhThuCK());
-                        ps.setBigDecimal(7, tienMatThucTe.add(tong.doanhThuCK()));
+                        ps.setBigDecimal(6, tong.doanhThuCKThuan());
+                        ps.setBigDecimal(7, tienMatThucTe.add(tong.doanhThuCKThuan()));
                         ps.executeUpdate();
                     }
                 } else {
@@ -110,8 +113,8 @@ public class PhieuKetCaDAO {
                             """)) {
                         ps.setBigDecimal(1, tong.tienDauCa());
                         ps.setBigDecimal(2, tienMatThucTe);
-                        ps.setBigDecimal(3, tong.doanhThuCK());
-                        ps.setBigDecimal(4, tienMatThucTe.add(tong.doanhThuCK()));
+                        ps.setBigDecimal(3, tong.doanhThuCKThuan());
+                        ps.setBigDecimal(4, tienMatThucTe.add(tong.doanhThuCKThuan()));
                         ps.setString(5, maPhieu);
                         if (ps.executeUpdate() != 1)
                             throw new SQLException("Phiếu kết ca đã thay đổi.");
