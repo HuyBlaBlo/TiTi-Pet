@@ -1,18 +1,22 @@
 package com.titipet.entity;
 
+import java.util.Objects;
+
+import com.titipet.entity.enums.LoaiThuCungApDung;
+
 public class ThuCung {
-    private String maThuCung;
-    private String tenThuCung;
-    private String loaiThuCung;
-    private double canNang;
-    private String tinhTrangLong;
-    private String ghiChu;
-    private KhachHang chuNuoi;
+    private String maThuCung;		// VARCHAR(20) - Khóa chính
+    private String tenThuCung;		// NVARCHAR(120)
+    private LoaiThuCungApDung loaiThuCung;		// VARCHAR(10) - Chỉ nhận 'CHO' hoặc 'MEO'
+    private double canNang;			// DECIMAL(8,2) - Lớn hơn 0
+    private String tinhTrangLong;	// NVARCHAR(300)
+    private String ghiChu;			// NVARCHAR(1000)
+    private KhachHang chuNuoi;		// Khóa ngoại maKH VARCHAR(20)
 
     public ThuCung() {
     }
 
-    public ThuCung(String maThuCung, String tenThuCung, String loaiThuCung, double canNang, String tinhTrangLong, String ghiChu, KhachHang chuNuoi) {
+    public ThuCung(String maThuCung, String tenThuCung, LoaiThuCungApDung loaiThuCung, double canNang, String tinhTrangLong, String ghiChu, KhachHang chuNuoi) {
         this.maThuCung = maThuCung;
         this.tenThuCung = tenThuCung;
         this.loaiThuCung = loaiThuCung;
@@ -27,7 +31,7 @@ public class ThuCung {
     }
 
     public void setMaThuCung(String maThuCung) {
-        this.maThuCung = maThuCung;
+        this.maThuCung = (maThuCung != null) ? maThuCung.trim() : null;
     }
 
     public String getTenThuCung() {
@@ -35,14 +39,14 @@ public class ThuCung {
     }
 
     public void setTenThuCung(String tenThuCung) {
-        this.tenThuCung = tenThuCung;
+        this.tenThuCung = (tenThuCung != null) ? tenThuCung.trim() : "";
     }
 
-    public String getLoaiThuCung() {
+    public LoaiThuCungApDung getLoaiThuCung() {
         return loaiThuCung;
     }
 
-    public void setLoaiThuCung(String loaiThuCung) {
+    public void setLoaiThuCung(LoaiThuCungApDung loaiThuCung) {
         this.loaiThuCung = loaiThuCung;
     }
 
@@ -86,4 +90,27 @@ public class ThuCung {
         this.canNang = canNang;
         this.tinhTrangLong = tinhTrangLong;
     }
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(maThuCung);
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		ThuCung other = (ThuCung) obj;
+		return Objects.equals(maThuCung, other.maThuCung);
+	}
+
+	@Override
+	public String toString() {
+		return tenThuCung != null ? tenThuCung : "";
+	}
+    
 }
