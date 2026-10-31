@@ -117,18 +117,13 @@ public class KhachHang {
 		KhachHang other = (KhachHang) obj;
 		return Objects.equals(maKH, other.maKH);
 	}
-
-	@Override
-	public String toString() {
-		return "KhachHang{" +
-                "maKH='" + maKH + '\'' +
-                ", hoTen='" + hoTen + '\'' +
-                ", soDienThoai='" + soDienThoai + '\'' +
-                ", hangTV=" + hangTV +
-                ", diemTichLuy=" + diemTichLuy +
-                '}';
-	}
     
-	
+	@Override
+    public String toString() {
+        if (hoTen == null || hoTen.isBlank()) {
+            return maKH != null ? maKH : "";
+        }
+        return hoTen + (soDienThoai != null && !soDienThoai.isBlank() ? " - " + soDienThoai : "");
+    }
     
 }
