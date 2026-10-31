@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.math.RoundingMode;
 
 /**
  * UC008 - Bán hàng tại quầy.
@@ -36,6 +37,59 @@ public class BanHangService {
             return sanPham.giaBan()
                     .multiply(BigDecimal.valueOf(soLuong));
         }
+    }
+
+
+    /** Mot luot Spa cho mot thu cung, don gia da duoc xac nhan voi khach. */
+    public record DongSpa(
+            String maDichVu, String tenDichVu,
+            String maThuCung, String tenThuCung,
+            BigDecimal donGiaDaChot, BigDecimal thueSuat,
+            boolean giaDaBaoGomThue) {
+        public BigDecimal tienThue() {
+            if (giaDaBaoGomThue) {
+                BigDecimal net = donGiaDaChot.divide(
+                        BigDecimal.ONE.add(thueSuat.movePointLeft(2)),
+                        2, RoundingMode.HALF_UP);
+                return donGiaDaChot.subtract(net);
+            }
+            return donGiaDaChot.multiply(thueSuat)
+                    .movePointLeft(2).setScale(2, RoundingMode.HALF_UP);
+        }
+        public BigDecimal tienTruocThue() {
+            return giaDaBaoGomThue ? donGiaDaChot.subtract(tienThue()) : donGiaDaChot;
+        }
+        public BigDecimal thanhTien() {
+            return giaDaBaoGomThue ? donGiaDaChot : donGiaDaChot.add(tienThue());
+        }
+    }
+
+    private final List<DongSpa> gioSpa = new ArrayList<>();
+
+    public void themSpa(DongSpa dong) {
+        Objects.requireNonNull(dong, "Dong dich vu Spa khong duoc null.");
+        gioSpa.add(dong);
+    }
+
+    public List<DongSpa> layGioSpa() {
+        return List.copyOf(gioSpa);
+    }
+
+    public void xoaSpa(int viTri) {
+        gioSpa.remove(viTri);
+    }
+
+    public void xoaToanBoSpa() {
+        gioSpa.clear();
+    }
+
+    public BigDecimal tinhTongTienSpa() {
+        return gioSpa.stream().map(DongSpa::thanhTien)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public boolean gioHangRong() {
+        return gioHang.isEmpty() && gioSpa.isEmpty();
     }
 
     private final BanHangSanPhamDAO sanPhamDAO;
@@ -172,6 +226,7 @@ public class BanHangService {
      */
     public void xoaToanBoGio() {
         gioHang.clear();
+        gioSpa.clear();
     }
 
     /**
