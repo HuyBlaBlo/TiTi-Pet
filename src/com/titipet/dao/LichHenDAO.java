@@ -51,7 +51,7 @@ public class LichHenDAO {
                kh.maKH, kh.hoTen, kh.soDienThoai, kh.hangTV, kh.diemTichLuy,
                tc.maThuCung, tc.tenThuCung, tc.loaiThuCung, tc.canNang,
                tc.tinhTrangLong, tc.ghiChu AS ghiChuThuCung,
-               dv.maDichVu, dv.tenDichVu, dv.donGiaCoBan, dv.thueSuat,
+               dv.maDichVu, dv.tenDichVu, dv.donGiaCoBan, dv.thueSuat, dv.thoiLuongPhut,
                dv.giaDaBaoGomThue, dv.loaiThuCungApDung, dv.dangHoatDong,
                nv.maNV, nv.hoTen AS tenThoSpa, nv.vaiTro, nv.tenDangNhap
         FROM dbo.LichHen lh
@@ -69,6 +69,7 @@ public class LichHenDAO {
              ORDER BY lh.thoiGianHen ASC
              """;
         List<LichHen> ds = new ArrayList<>();
+        System.out.println(SQL_SELECT_LICH_HEN);
         try (PreparedStatement ps = getActiveConnection().prepareStatement(sql)) {
             ps.setTimestamp(1, Timestamp.valueOf(ngay.atStartOfDay()));
             ps.setTimestamp(2, Timestamp.valueOf(ngay.plusDays(1).atStartOfDay()));
@@ -353,7 +354,7 @@ public class LichHenDAO {
     /** Danh sách dịch vụ Spa đang hoạt động để đổ vào combo dịch vụ. */
     public List<DichVuSpa> layDanhSachDichVuSpa() throws SQLException {
         String sql = """
-            SELECT maDichVu, tenDichVu, donGiaCoBan, thueSuat,
+            SELECT maDichVu, tenDichVu, donGiaCoBan, thueSuat, thoiLuongPhut,
                    giaDaBaoGomThue, loaiThuCungApDung, dangHoatDong
             FROM dbo.DichVuSpa WHERE dangHoatDong = 1 ORDER BY tenDichVu
             """;
@@ -366,9 +367,19 @@ public class LichHenDAO {
                 // Enum hiện tại của project chưa có CA_HAI; tránh làm hỏng lúc đọc dữ liệu.
                 try { loaiEnum = LoaiThuCungApDung.valueOf(loai); }
                 catch (IllegalArgumentException ignored) { /* bổ sung CA_HAI vào enum nếu cần */ }
-                ds.add(new DichVuSpa(rs.getString("maDichVu"), rs.getString("tenDichVu"),
-                        rs.getBigDecimal("donGiaCoBan"), rs.getBigDecimal("thueSuat"),
-                        rs.getBoolean("giaDaBaoGomThue"), loaiEnum, rs.getBoolean("dangHoatDong")));
+                DichVuSpa dv = new DichVuSpa(
+                	    rs.getString("maDichVu"),
+                	    rs.getString("tenDichVu"),
+                	    rs.getBigDecimal("donGiaCoBan"),
+                	    rs.getBigDecimal("thueSuat"),
+                	    rs.getBoolean("giaDaBaoGomThue"),
+                	    loaiEnum,
+                	    rs.getBoolean("dangHoatDong")
+                	);
+
+                	dv.setThoiLuongPhut(rs.getInt("thoiLuongPhut"));
+
+                	ds.add(dv);
             }
         }
         return ds;
@@ -417,6 +428,7 @@ public class LichHenDAO {
         DichVuSpa dv = new DichVuSpa(rs.getString("maDichVu"), rs.getString("tenDichVu"),
                 rs.getBigDecimal("donGiaCoBan"), rs.getBigDecimal("thueSuat"),
                 rs.getBoolean("giaDaBaoGomThue"), loaiEnum, rs.getBoolean("dangHoatDong"));
+        dv.setThoiLuongPhut(rs.getInt("thoiLuongPhut"));
         NhanVien tho = null;
         String maNV = rs.getString("maNV");
         if (maNV != null) {
