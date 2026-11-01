@@ -324,7 +324,7 @@ public class LichHenDAO {
                 while (rs.next()) {
                     KhachHang kh = mapKhachHang(rs);
                     ds.add(new ThuCung(rs.getString("maThuCung"), rs.getString("tenThuCung"),
-                            rs.getString("loaiThuCung"), rs.getDouble("canNang"),
+                            LoaiThuCungApDung.valueOf(rs.getString("loaiThuCung")), rs.getDouble("canNang"),
                             rs.getString("tinhTrangLong"), rs.getString("ghiChu"), kh));
                 }
             }
@@ -408,7 +408,7 @@ public class LichHenDAO {
                 rs.getString("soDienThoai"), HangTV.valueOf(rs.getString("hangTV")),
                 rs.getInt("diemTichLuy"));
         ThuCung tc = new ThuCung(rs.getString("maThuCung"), rs.getString("tenThuCung"),
-                rs.getString("loaiThuCung"), rs.getDouble("canNang"),
+                LoaiThuCungApDung.valueOf(rs.getString("loaiThuCung")), rs.getDouble("canNang"),
                 rs.getString("tinhTrangLong"), rs.getString("ghiChuThuCung"), kh);
         String loai = rs.getString("loaiThuCungApDung");
         LoaiThuCungApDung loaiEnum = null;

@@ -1,536 +1,332 @@
-
 package com.titipet.gui.dialog;
 
-import com.titipet.dao.ThuCungDAO;
+import com.titipet.bus.KhachHangService;
+import com.titipet.bus.ThuCungService;
 import com.titipet.entity.KhachHang;
 import com.titipet.entity.ThuCung;
+import com.titipet.entity.enums.LoaiThuCungApDung;
+import com.titipet.util.RoundedPannel;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
-import javax.swing.text.AbstractDocument;
-import javax.swing.text.AttributeSet;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.DocumentFilter;
-import javax.swing.text.DocumentFilter.FilterBypass;
 import java.awt.*;
 import java.math.BigDecimal;
-import java.sql.SQLException;
+import java.util.List;
 
-public class ThemThuCungDialog extends JDialog {
+public class ThemThuCungDialog extends JDialog{
+	
+	private final ThuCungService thuCungService;
+    private final KhachHangService khachHangService;
 
-    private static final Color COLOR_BLUE = new Color(36, 101, 190);
-    private static final Color COLOR_TEXT = new Color(35, 51, 75);
-    private static final Color COLOR_MUTED = new Color(117, 135, 160);
-    private static final Color COLOR_BORDER = new Color(222, 231, 243);
-    private static final Color COLOR_LIGHT_BLUE = new Color(235, 243, 255);
-
-    private final KhachHang chuNuoi;
-    private final ThuCungDAO thuCungDAO;
-
+    // Các thành phần nhập liệu trên giao diện
+    private JComboBox<KhachHang> cbChuNuoi;
     private JTextField txtTenThuCung;
-    private JComboBox<String> cboLoaiThuCung;
+    private JComboBox<LoaiThuCungApDung> cbLoai;
     private JTextField txtCanNang;
     private JTextField txtTinhTrangLong;
     private JTextArea txtGhiChu;
-
     private ThuCung thuCungMoi;
 
-    public ThemThuCungDialog(Window owner, KhachHang chuNuoi) {
-        super(owner, "Thêm thú cưng", ModalityType.APPLICATION_MODAL);
+    // Bảng màu Flat Design
+    private static final Color COLOR_PRIMARY_BLUE = new Color(24, 119, 242);
+    private static final Color COLOR_TEXT_DARK = new Color(30, 41, 59);
+    private static final Color COLOR_TEXT_MUTED = new Color(100, 116, 139);
+    private static final Color COLOR_BORDER = new Color(226, 232, 240);
 
-        if (chuNuoi == null) {
-            throw new IllegalArgumentException(
-                    "Khách hàng không được để trống."
-            );
-        }
-
-        this.chuNuoi = chuNuoi;
-        this.thuCungDAO = new ThuCungDAO();
+    public ThemThuCungDialog(Frame parent, ThuCungService tcService, KhachHangService khService) {
+        super(parent, "Thêm hồ sơ thú cưng", true);
+        this.thuCungService = tcService;
+        this.khachHangService = khService;
 
         initComponents();
+        loadDanhSachKhachHang();
+    }
 
-        setSize(520, 650);
+    /** Đặt lịch Spa mở dialog với chủ nuôi đã chọn và nhận lại thú cưng vừa tạo. */
+    public ThemThuCungDialog(Window owner, KhachHang chuNuoi) {
+        this(owner instanceof Frame ? (Frame) owner : null,
+                new ThuCungService(), new KhachHangService());
+        if (chuNuoi == null) {
+            throw new IllegalArgumentException("Khách hàng không được để trống.");
+        }
+        cbChuNuoi.setSelectedItem(chuNuoi);
+        cbChuNuoi.setEnabled(false);
         setLocationRelativeTo(owner);
-        setResizable(false);
     }
-
-    private void initComponents() {
-        setLayout(new BorderLayout());
-        getContentPane().setBackground(Color.WHITE);
-
-        JPanel main = new JPanel(new BorderLayout(0, 14));
-        main.setBackground(Color.WHITE);
-        main.setBorder(new EmptyBorder(18, 22, 18, 22));
-
-        main.add(createHeader(), BorderLayout.NORTH);
-        main.add(createForm(), BorderLayout.CENTER);
-        main.add(createFooter(), BorderLayout.SOUTH);
-
-        add(main, BorderLayout.CENTER);
-    }
-
-    // ================= HEADER =================
-
-    private JPanel createHeader() {
-        JPanel header = new JPanel();
-        header.setOpaque(false);
-        header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
-
-        JLabel title = new JLabel(
-                "Thêm thú cưng mới",
-                SwingConstants.CENTER
-        );
-        title.setFont(new Font("Segoe UI", Font.BOLD, 23));
-        title.setForeground(COLOR_TEXT);
-        title.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JLabel sub = new JLabel(
-                "Nhập thông tin để tạo hồ sơ thú cưng cho khách hàng.",
-                SwingConstants.CENTER
-        );
-        sub.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        sub.setForeground(COLOR_MUTED);
-        sub.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        header.add(title);
-        header.add(Box.createVerticalStrut(5));
-        header.add(sub);
-        header.add(Box.createVerticalStrut(12));
-
-        JPanel ownerBox = new JPanel(new BorderLayout());
-        ownerBox.setBackground(COLOR_LIGHT_BLUE);
-        ownerBox.setBorder(new EmptyBorder(9, 12, 9, 12));
-
-        JLabel ownerLabel = new JLabel(
-                "Chủ nuôi: " + chuNuoi.getMaKH()
-        );
-        ownerLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        ownerLabel.setForeground(COLOR_BLUE);
-
-        ownerBox.add(ownerLabel, BorderLayout.CENTER);
-        header.add(ownerBox);
-
-        return header;
-    }
-
-    // ================= FORM =================
-
-    private JPanel createForm() {
-        JPanel form = new JPanel(new GridBagLayout());
-        form.setOpaque(false);
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.weightx = 1;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.anchor = GridBagConstraints.NORTH;
-        gbc.insets = new Insets(4, 0, 4, 0);
-
-        // Tên thú cưng
-        txtTenThuCung = createTextField();
-        addField(form, gbc, "Tên thú cưng *", txtTenThuCung);
-
-        // Loại thú cưng
-        cboLoaiThuCung = new JComboBox<>(
-                new String[]{"Chó", "Mèo"}
-        );
-        styleComboBox(cboLoaiThuCung);
-        addField(form, gbc, "Loại thú cưng *", cboLoaiThuCung);
-
-        // Cân nặng
-        txtCanNang = createTextField();
-        txtCanNang.setToolTipText(
-                "Chỉ nhập số dương. Ví dụ: 4.5"
-        );
-
-        ((AbstractDocument) txtCanNang.getDocument())
-                .setDocumentFilter(new WeightDocumentFilter());
-
-        addField(form, gbc, "Cân nặng (kg) *", txtCanNang);
-
-        // Tình trạng lông
-        txtTinhTrangLong = createTextField();
-        addField(form, gbc, "Tình trạng lông", txtTinhTrangLong);
-
-        // Ghi chú
-        txtGhiChu = new JTextArea(3, 20);
-        txtGhiChu.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        txtGhiChu.setForeground(COLOR_TEXT);
-        txtGhiChu.setBackground(Color.WHITE);
-        txtGhiChu.setLineWrap(true);
-        txtGhiChu.setWrapStyleWord(true);
-        txtGhiChu.setBorder(
-                new EmptyBorder(8, 10, 8, 10)
-        );
-
-        JScrollPane scroll = new JScrollPane(txtGhiChu);
-        scroll.setBorder(
-                new LineBorder(COLOR_BORDER, 1, true)
-        );
-        scroll.setVerticalScrollBarPolicy(
-                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED
-        );
-        scroll.setHorizontalScrollBarPolicy(
-                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
-        );
-
-        addField(form, gbc, "Ghi chú", scroll);
-
-        return form;
-    }
-
-    // ================= ADD FIELD =================
-
-    private void addField(
-            JPanel form,
-            GridBagConstraints gbc,
-            String label,
-            JComponent component
-    ) {
-        JLabel lbl = new JLabel(label);
-        lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        lbl.setForeground(COLOR_TEXT);
-
-        gbc.gridx = 0;
-        gbc.gridwidth = 1;
-        gbc.gridy++;
-        gbc.weighty = 0;
-        gbc.insets = new Insets(4, 0, 3, 0);
-
-        form.add(lbl, gbc);
-
-        gbc.gridy++;
-        gbc.insets = new Insets(2, 0, 7, 0);
-
-        form.add(component, gbc);
-
-        gbc.insets = new Insets(4, 0, 4, 0);
-    }
-
-    // ================= FOOTER =================
-
-    private JPanel createFooter() {
-        JPanel footer = new JPanel(
-                new FlowLayout(FlowLayout.RIGHT, 8, 0)
-        );
-        footer.setOpaque(false);
-
-        JButton btnHuy = createButton(
-                "Hủy",
-                Color.WHITE,
-                COLOR_TEXT
-        );
-
-        JButton btnLuu = createButton(
-                "Lưu thú cưng",
-                COLOR_BLUE,
-                Color.WHITE
-        );
-
-        btnLuu.setFont(
-                new Font("Segoe UI", Font.BOLD, 13)
-        );
-        btnLuu.setBorder(
-                new EmptyBorder(10, 20, 10, 20)
-        );
-        btnLuu.setContentAreaFilled(true);
-        btnLuu.setBorderPainted(false);
-
-        btnHuy.addActionListener(e -> dispose());
-        btnLuu.addActionListener(e -> luuThuCung());
-
-        footer.add(btnHuy);
-        footer.add(btnLuu);
-
-        return footer;
-    }
-
-    // ================= TEXT FIELD =================
-
-    private JTextField createTextField() {
-        JTextField field = new JTextField();
-
-        field.setFont(
-                new Font("Segoe UI", Font.PLAIN, 13)
-        );
-        field.setForeground(COLOR_TEXT);
-        field.setBackground(Color.WHITE);
-
-        field.setBorder(
-                BorderFactory.createCompoundBorder(
-                        new LineBorder(COLOR_BORDER, 1, true),
-                        new EmptyBorder(8, 10, 8, 10)
-                )
-        );
-
-        return field;
-    }
-
-    private void styleComboBox(JComboBox<String> combo) {
-        combo.setFont(
-                new Font("Segoe UI", Font.PLAIN, 13)
-        );
-        combo.setForeground(COLOR_TEXT);
-        combo.setBackground(Color.WHITE);
-        combo.setBorder(
-                new LineBorder(COLOR_BORDER, 1, true)
-        );
-    }
-
-    // ================= BUTTON =================
-
-    private JButton createButton(
-            String text,
-            Color background,
-            Color foreground
-    ) {
-        JButton button = new JButton(text);
-
-        button.setFont(
-                new Font("Segoe UI", Font.BOLD, 12)
-        );
-        button.setForeground(foreground);
-        button.setBackground(background);
-        button.setFocusPainted(false);
-        button.setCursor(
-                new Cursor(Cursor.HAND_CURSOR)
-        );
-        button.setBorder(
-                new EmptyBorder(10, 17, 10, 17)
-        );
-        button.setOpaque(true);
-        button.setContentAreaFilled(true);
-
-        return button;
-    }
-
-    // ================= WEIGHT VALIDATION =================
-
-    private static class WeightDocumentFilter extends DocumentFilter {
-
-    	private boolean isValidWeight(String text) {
-    	    if (text.isEmpty()) {
-    	        return true;
-    	    }
-
-    	    // Chỉ cho nhập số, tối đa 2 chữ số thập phân
-    	    if (!text.matches("\\d*(\\.\\d{0,2})?")) {
-    	        return false;
-    	    }
-
-    	    // Không cho nhập số 0 ở đầu
-    	    if (text.startsWith("0")) {
-    	        return false;
-    	    }
-
-    	    try {
-    	        BigDecimal value = new BigDecimal(text);
-    	        return value.compareTo(BigDecimal.ZERO) > 0;
-    	    } catch (NumberFormatException e) {
-    	        return false;
-    	    }
-    	}
-    	
-        @Override
-        public void insertString(
-                FilterBypass fb,
-                int offset,
-                String string,
-                AttributeSet attr
-        ) throws BadLocationException {
-
-            if (string == null) {
-                return;
-            }
-
-            String oldText = fb.getDocument().getText(
-                    0,
-                    fb.getDocument().getLength()
-            );
-
-            String newText = oldText.substring(0, offset)
-                    + string
-                    + oldText.substring(offset);
-
-            newText = newText.replace(',', '.');
-
-            if (isValidWeight(newText)) {
-                fb.replace(
-                        0,
-                        fb.getDocument().getLength(),
-                        newText,
-                        attr
-                );
-            }
-        }
-
-        @Override
-        public void replace(
-                FilterBypass fb,
-                int offset,
-                int length,
-                String text,
-                AttributeSet attrs
-        ) throws BadLocationException {
-
-            if (text == null) {
-                text = "";
-            }
-
-            String oldText = fb.getDocument().getText(
-                    0,
-                    fb.getDocument().getLength()
-            );
-
-            String newText = oldText.substring(0, offset)
-                    + text
-                    + oldText.substring(offset + length);
-
-            newText = newText.replace(',', '.');
-
-            if (isValidWeight(newText)) {
-                fb.replace(
-                        0,
-                        fb.getDocument().getLength(),
-                        newText,
-                        attrs
-                );
-            }
-        }
-    }
-
-    // ================= SAVE PET =================
-
-    private void luuThuCung() {
-        String ten = txtTenThuCung.getText().trim();
-
-        String loai = cboLoaiThuCung.getSelectedIndex() == 0
-                ? "CHO" : "MEO";
-
-        String canNangText = txtCanNang.getText().trim();
- 
-        String tinhTrangLong = txtTinhTrangLong.getText().trim();
-
-        if (!tinhTrangLong.matches("[\\p{L}\\s,\\.\\-]*")) {
-            showError("Tình trạng lông không được chứa số hoặc ký tự không hợp lệ.");
-            txtTinhTrangLong.requestFocus();
-            return;
-        }
-
-        if (tinhTrangLong.length() > 300) {
-            showError("Tình trạng lông không được vượt quá 300 ký tự.");
-            txtTinhTrangLong.requestFocus();
-            return;
-        }
-        String ghiChu = txtGhiChu.getText().trim();
-
-        if (ten.isEmpty()) {
-            showError("Vui lòng nhập tên thú cưng.");
-            txtTenThuCung.requestFocus();
-            return;
-        }
-
-        if (ten.length() > 120) {
-            showError(
-                    "Tên thú cưng không được vượt quá 120 ký tự."
-            );
-            txtTenThuCung.requestFocus();
-            return;
-        }
-
-        if (canNangText.isEmpty()) {
-            showError("Vui lòng nhập cân nặng.");
-            txtCanNang.requestFocus();
-            return;
-        }
-
-        BigDecimal canNang;
-
-        try {
-            canNang = new BigDecimal(canNangText);
-        } catch (NumberFormatException e) {
-            showError(
-                    "Cân nặng phải là số hợp lệ. Ví dụ: 4.5"
-            );
-            txtCanNang.requestFocus();
-            return;
-        }
-
-        if (canNang.compareTo(BigDecimal.ZERO) <= 0) {
-            showError(
-                    "Cân nặng phải lớn hơn 0, không được nhập số âm hoặc 0."
-            );
-            txtCanNang.requestFocus();
-            return;
-        }
-
-        if (canNang.precision() > 8 || canNang.scale() > 2) {
-            showError(
-                    "Cân nặng tối đa 2 chữ số thập phân."
-            );
-            txtCanNang.requestFocus();
-            return;
-        }
-
-        if (tinhTrangLong.length() > 300) {
-            showError(
-                    "Tình trạng lông không được vượt quá 300 ký tự."
-            );
-            txtTinhTrangLong.requestFocus();
-            return;
-        }
-
-        if (ghiChu.length() > 1000) {
-            showError(
-                    "Ghi chú không được vượt quá 1000 ký tự."
-            );
-            txtGhiChu.requestFocus();
-            return;
-        }
-
-        try {
-            thuCungMoi = thuCungDAO.themThuCung(
-                    ten,
-                    loai,
-                    canNang,
-                    tinhTrangLong.isEmpty() ? null : tinhTrangLong,
-                    ghiChu.isEmpty() ? null : ghiChu,
-                    chuNuoi
-            );
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Thêm thú cưng thành công!\nMã thú cưng: "
-                            + thuCungMoi.getMaThuCung(),
-                    "Thành công",
-                    JOptionPane.INFORMATION_MESSAGE
-            );
-
-            dispose();
-
-        } catch (SQLException | IllegalArgumentException e) {
-            showError(
-                    "Không thể thêm thú cưng:\n" + e.getMessage()
-            );
-        }
-    }
-
-    // ================= ERROR =================
-
-    private void showError(String message) {
-        JOptionPane.showMessageDialog(
-                this,
-                message,
-                "Thông tin chưa hợp lệ",
-                JOptionPane.WARNING_MESSAGE
-        );
-    }
-
-    // ================= GET RESULT =================
 
     public ThuCung getThuCungMoi() {
         return thuCungMoi;
     }
+
+    private void initComponents() {
+        setLayout(new BorderLayout());
+        setBackground(Color.WHITE);
+
+        RoundedPannel mainCard = new RoundedPannel(Color.WHITE, 16);
+        mainCard.setLayout(new BorderLayout(0, 16));
+        mainCard.setBorder(new EmptyBorder(22, 26, 22, 26));
+
+        // --- 1. TIÊU ĐỀ & NÚT ĐÓNG ---
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setOpaque(false);
+
+        JLabel lblTitle = new JLabel("Thêm hồ sơ thú cưng");
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblTitle.setForeground(COLOR_TEXT_DARK);
+
+        JButton btnClose = new JButton("X");
+        btnClose.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        btnClose.setForeground(COLOR_TEXT_MUTED);
+        btnClose.setBackground(new Color(241, 245, 249));
+        btnClose.setPreferredSize(new Dimension(32, 32));
+        btnClose.setBorder(null);
+        btnClose.setFocusPainted(false);
+        btnClose.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnClose.addActionListener(e -> dispose());
+
+        headerPanel.add(lblTitle, BorderLayout.WEST);
+        headerPanel.add(btnClose, BorderLayout.EAST);
+        mainCard.add(headerPanel, BorderLayout.NORTH);
+
+        // --- 2. FORM NHẬP LIỆU (BỐ CỤC 2 CỘT CÂN ĐỐI) ---
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        formPanel.setOpaque(false);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.weightx = 0.5;
+
+        // HÀNG 1 - CỘT TRÁI: CHỦ NUÔI & NÚT THÊM KHÁCH MỚI
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.insets = new Insets(0, 0, 12, 8);
+
+        JPanel chuNuoiGroup = new JPanel(new BorderLayout(6, 4));
+        chuNuoiGroup.setOpaque(false);
+
+        JPanel lblGroup = new JPanel(new BorderLayout());
+        lblGroup.setOpaque(false);
+
+        JLabel lblChuNuoi = new JLabel("Chủ nuôi *");
+        lblChuNuoi.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblChuNuoi.setForeground(COLOR_TEXT_DARK);
+
+        JButton btnThemKhachNhanh = new JButton("+ Thêm khách mới");
+        btnThemKhachNhanh.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        btnThemKhachNhanh.setForeground(COLOR_PRIMARY_BLUE);
+        btnThemKhachNhanh.setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 4));
+        btnThemKhachNhanh.setContentAreaFilled(false);
+        btnThemKhachNhanh.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnThemKhachNhanh.addActionListener(e -> {
+            ThemKhachHangDialog dlg = new ThemKhachHangDialog((Frame) SwingUtilities.getWindowAncestor(this), khachHangService);
+            dlg.setVisible(true);
+            loadDanhSachKhachHang();
+        });
+
+        lblGroup.add(lblChuNuoi, BorderLayout.WEST);
+        lblGroup.add(btnThemKhachNhanh, BorderLayout.EAST);
+
+        cbChuNuoi = new JComboBox<>();
+        cbChuNuoi.setPreferredSize(new Dimension(0, 38));
+        cbChuNuoi.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        cbChuNuoi.setBackground(Color.WHITE);
+        cbChuNuoi.setRenderer(new DefaultListCellRenderer() {
+        	@Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof KhachHang kh) {
+                    String ten = kh.getHoTen() != null ? kh.getHoTen() : "";
+                    String sdt = kh.getSoDienThoai() != null ? kh.getSoDienThoai() : "";
+                    setText(ten + (sdt.isEmpty() ? "" : " - " + sdt));
+                } else if (value == null) {
+                    setText("-- Chọn chủ nuôi --");
+                }
+                return this;
+            }
+        });
+
+        chuNuoiGroup.add(lblGroup, BorderLayout.NORTH);
+        chuNuoiGroup.add(cbChuNuoi, BorderLayout.CENTER);
+        formPanel.add(chuNuoiGroup, gbc);
+
+        // HÀNG 1 - CỘT PHẢI: TÊN THÚ CƯNG
+        gbc.gridx = 1;
+        gbc.gridy = 0;
+        gbc.insets = new Insets(0, 8, 12, 0);
+        formPanel.add(createFieldGroup("Tên thú cưng *", txtTenThuCung = createInputField()), gbc);
+
+        // HÀNG 2 - CỘT TRÁI: LOÀI (ENUM)
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.insets = new Insets(0, 0, 12, 8);
+        cbLoai = new JComboBox<>(LoaiThuCungApDung.values());
+        cbLoai.setPreferredSize(new Dimension(0, 38));
+        cbLoai.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        cbLoai.setBackground(Color.WHITE);
+        formPanel.add(createFieldGroup("Loài *", cbLoai), gbc);
+
+        // HÀNG 2 - CỘT PHẢI: CÂN NẶNG
+        gbc.gridx = 1;
+        gbc.gridy = 1;
+        gbc.insets = new Insets(0, 8, 12, 0);
+        txtCanNang = createInputField();
+        formPanel.add(createFieldGroup("Cân nặng (kg) *", txtCanNang), gbc);
+
+        // HÀNG 3: TÌNH TRẠNG LÔNG
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.gridwidth = 2;
+        gbc.insets = new Insets(0, 0, 12, 0);
+        txtTinhTrangLong = createInputField();
+        formPanel.add(createFieldGroup("Tình trạng lông", txtTinhTrangLong), gbc);
+
+        // HÀNG 4: GHI CHÚ (CHIẾM HẾT 2 CỘT)
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.gridwidth = 2;
+        gbc.insets = new Insets(0, 0, 16, 0);
+
+        JPanel ghiChuPanel = new JPanel();
+        ghiChuPanel.setLayout(new BoxLayout(ghiChuPanel, BoxLayout.Y_AXIS));
+        ghiChuPanel.setOpaque(false);
+
+        JLabel lblGhiChu = new JLabel("Ghi chú cần lưu ý");
+        lblGhiChu.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblGhiChu.setForeground(COLOR_TEXT_DARK);
+
+        txtGhiChu = new JTextArea(3, 0);
+        txtGhiChu.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        txtGhiChu.setLineWrap(true);
+        txtGhiChu.setWrapStyleWord(true);
+        txtGhiChu.setBorder(new EmptyBorder(8, 10, 8, 10));
+
+        JScrollPane scrollGhiChu = new JScrollPane(txtGhiChu);
+        scrollGhiChu.setBorder(BorderFactory.createLineBorder(COLOR_BORDER, 1));
+
+        ghiChuPanel.add(lblGhiChu);
+        ghiChuPanel.add(Box.createVerticalStrut(6));
+        ghiChuPanel.add(scrollGhiChu);
+        formPanel.add(ghiChuPanel, gbc);
+
+        // HÀNG 5: NÚT XÁC NHẬN LƯU HỒ SƠ
+        gbc.gridx = 0;
+        gbc.gridy = 4;
+        gbc.gridwidth = 2;
+        gbc.insets = new Insets(0, 0, 0, 0);
+
+        JButton btnSave = new JButton("Lưu hồ sơ thú cưng");
+        btnSave.setPreferredSize(new Dimension(0, 42));
+        btnSave.setBackground(COLOR_PRIMARY_BLUE);
+        btnSave.setForeground(Color.WHITE);
+        btnSave.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnSave.setFocusPainted(false);
+        btnSave.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnSave.setBorder(BorderFactory.createEmptyBorder());
+        btnSave.addActionListener(e -> xuLyThemThuCung());
+        formPanel.add(btnSave, gbc);
+
+        mainCard.add(formPanel, BorderLayout.CENTER);
+        add(mainCard, BorderLayout.CENTER);
+
+        pack();
+        setSize(600, 460);
+        setLocationRelativeTo(getParent());
+        setResizable(false);
+    }
+
+    private void loadDanhSachKhachHang() {
+        cbChuNuoi.removeAllItems();
+        try {
+            List<KhachHang> ds = khachHangService.layTatCaKhachHang();
+            if (ds == null || ds.isEmpty()) {
+                System.out.println("[DEBUG] Không tìm thấy khách hàng nào trong CSDL!");
+                return;
+            }
+            for (KhachHang kh : ds) {
+                cbChuNuoi.addItem(kh);
+            }
+            if (cbChuNuoi.getItemCount() > 0) {
+                cbChuNuoi.setSelectedIndex(0);
+            }
+        } catch (Exception ex) {
+            System.err.println("[LỖI LOAD KHÁCH HÀNG]: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+    }
+
+    private JTextField createInputField() {
+        JTextField field = new JTextField();
+        field.setPreferredSize(new Dimension(0, 38));
+        field.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(COLOR_BORDER, 1),
+                new EmptyBorder(0, 12, 0, 12)
+        ));
+        return field;
+    }
+
+    private JPanel createFieldGroup(String labelText, JComponent comp) {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setOpaque(false);
+
+        JLabel label = new JLabel(labelText);
+        label.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        label.setForeground(COLOR_TEXT_DARK);
+
+        panel.add(label);
+        panel.add(Box.createVerticalStrut(6));
+        panel.add(comp);
+        return panel;
+    }
+
+    private void xuLyThemThuCung() {
+        try {
+            KhachHang chuNuoi = (KhachHang) cbChuNuoi.getSelectedItem();
+            if (chuNuoi == null) {
+                throw new IllegalArgumentException("Vui lòng chọn chủ nuôi!");
+            }
+
+            String ten = txtTenThuCung.getText().trim();
+            if (ten.isEmpty()) {
+                throw new IllegalArgumentException("Vui lòng nhập tên thú cưng!");
+            }
+            if (ten.length() > 120) {
+                throw new IllegalArgumentException("Tên thú cưng không được vượt quá 120 ký tự.");
+            }
+
+            BigDecimal canNang;
+            try {
+                canNang = new BigDecimal(txtCanNang.getText().trim().replace(',', '.'));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Cân nặng phải là dạng số hợp lệ (ví dụ: 3.5)!");
+            }
+            if (canNang.signum() <= 0 || canNang.scale() > 2 || canNang.precision() > 8) {
+                throw new IllegalArgumentException("Cân nặng phải lớn hơn 0 và có tối đa 2 chữ số thập phân.");
+            }
+
+            LoaiThuCungApDung loaiChon = (LoaiThuCungApDung) cbLoai.getSelectedItem();
+            String ghiChu = txtGhiChu.getText().trim();
+            String tinhTrangLong = txtTinhTrangLong.getText().trim();
+            if (tinhTrangLong.length() > 300 || ghiChu.length() > 1000) {
+                throw new IllegalArgumentException("Tình trạng lông hoặc ghi chú vượt quá độ dài cho phép.");
+            }
+
+            ThuCung tc = new ThuCung();
+            tc.setTenThuCung(ten);
+            tc.setLoaiThuCung(loaiChon);
+            tc.setCanNang(canNang.doubleValue());
+            tc.setTinhTrangLong(tinhTrangLong);
+            tc.setGhiChu(ghiChu);
+            tc.setChuNuoi(chuNuoi);
+
+            thuCungService.themThuCung(tc);
+            thuCungMoi = tc;
+            JOptionPane.showMessageDialog(this, "Thêm hồ sơ thú cưng thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            dispose();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+        }
+    }
 }
+
