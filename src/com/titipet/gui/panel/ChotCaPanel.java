@@ -277,7 +277,7 @@ public class ChotCaPanel extends JPanel {
                 )
         );
 
-        badges.add(pill("Luồng chức năng", WHITE, NAVY));
+        badges.add(pill("Hướng dẫn sử dụng", WHITE, NAVY));
 
         root.add(badges, BorderLayout.EAST);
 
@@ -324,7 +324,7 @@ public class ChotCaPanel extends JPanel {
 
         fields.add(
                 twoFields(
-                        labelAndValue("Chuyển khoản", ckLabel),
+                        labelAndValue("Chuyển khoản thuần (đã trừ hoàn)", ckLabel),
                         labelAndValue("Qua sàn", sanLabel)
                 )
         );
@@ -592,7 +592,7 @@ public class ChotCaPanel extends JPanel {
 
                     dauCaLabel.setText(tien(ca.tienDauCa()));
                     matLabel.setText(tien(ca.doanhThuTienMat()));
-                    ckLabel.setText(tien(ca.doanhThuCK()));
+                    ckLabel.setText(tien(ca.doanhThuCKThuan()));
                     sanLabel.setText(tien(ca.doanhThuQuaSan()));
                     duKienLabel.setText(tien(ca.tienMatDuKien()));
 
