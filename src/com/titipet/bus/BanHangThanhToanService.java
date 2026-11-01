@@ -22,6 +22,32 @@ public class BanHangThanhToanService {
             List<BanHangService.DongGioHang> gioHang,
             BigDecimal tienKhachDua) {
 
+        return thanhToan(maKH, maNV, nguonDon, phuongThuc, diemSuDung,
+                gioHang, List.of(), tienKhachDua);
+    }
+
+    public String thanhToan(
+            String maKH, String maNV, String nguonDon,
+            String phuongThuc, int diemSuDung,
+            List<BanHangService.DongGioHang> gioHang,
+            List<BanHangService.DongSpa> gioSpa,
+            BigDecimal tienKhachDua) {
+
+        return thanhToan(maKH, maNV, nguonDon, phuongThuc, diemSuDung,
+                gioHang, gioSpa, tienKhachDua, null);
+    }
+
+    public String thanhToan(
+            String maKH, String maNV, String nguonDon,
+            String phuongThuc, int diemSuDung,
+            List<BanHangService.DongGioHang> gioHang,
+            List<BanHangService.DongSpa> gioSpa,
+            BigDecimal tienKhachDua, String maKhuyenMai) {
+
+        if (maKhuyenMai != null && !maKhuyenMai.isBlank() && diemSuDung != 0) {
+            throw new IllegalArgumentException(
+                "Khuyến mãi không được kết hợp với sử dụng điểm.");
+        }
         if (maKH == null || maKH.isBlank()) {
             throw new IllegalArgumentException(
                     "Vui lòng chọn khách hàng trước khi thanh toán.");
@@ -32,7 +58,8 @@ public class BanHangThanhToanService {
                     "Chưa xác định nhân viên lập hóa đơn.");
         }
 
-        if (gioHang == null || gioHang.isEmpty()) {
+        if ((gioHang == null || gioHang.isEmpty())
+                && (gioSpa == null || gioSpa.isEmpty())) {
             throw new IllegalArgumentException(
                     "Giỏ hàng đang trống.");
         }
@@ -64,7 +91,9 @@ public class BanHangThanhToanService {
             return dao.luuGiaoDich(
                     maKH, maNV, nguonDon,
                     phuongThuc, diemSuDung,
-                    List.copyOf(gioHang), tienKhachDua);
+                    gioHang == null ? List.of() : List.copyOf(gioHang),
+                    gioSpa == null ? List.of() : List.copyOf(gioSpa),
+                    tienKhachDua, maKhuyenMai);
         } catch (java.sql.SQLException e) {
             throw new IllegalStateException(
                     "Không thể lưu giao dịch: " + e.getMessage(), e);

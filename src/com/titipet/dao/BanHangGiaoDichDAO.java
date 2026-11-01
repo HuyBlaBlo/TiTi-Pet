@@ -2,11 +2,13 @@
 package com.titipet.dao;
 
 import com.titipet.bus.BanHangService;
+import com.titipet.bus.BanHangKhuyenMaiService;
 import com.titipet.bus.BanHangTinhTienService;
 import com.titipet.connectDB.ConnectDB;
 import com.titipet.entity.KhachHangBanHang;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.List;
@@ -20,6 +22,30 @@ public class BanHangGiaoDichDAO {
             int diemSuDung,
             List<BanHangService.DongGioHang> gio,
             BigDecimal tienKhachDua) throws SQLException {
+
+        return luuGiaoDich(maKH, maNV, nguonDon, phuongThuc,
+                diemSuDung, gio, List.of(), tienKhachDua, null);
+    }
+
+    public String luuGiaoDich(
+            String maKH, String maNV,
+            String nguonDon, String phuongThuc,
+            int diemSuDung,
+            List<BanHangService.DongGioHang> gio,
+            List<BanHangService.DongSpa> gioSpa,
+            BigDecimal tienKhachDua) throws SQLException {
+        return luuGiaoDich(maKH, maNV, nguonDon, phuongThuc,
+                diemSuDung, gio, gioSpa, tienKhachDua, null);
+    }
+
+    /** Mã KM được xác nhận lại khi ghi hóa đơn trong transaction. */
+    public String luuGiaoDich(
+            String maKH, String maNV,
+            String nguonDon, String phuongThuc,
+            int diemSuDung,
+            List<BanHangService.DongGioHang> gio,
+            List<BanHangService.DongSpa> gioSpa,
+            BigDecimal tienKhachDua, String maKhuyenMai) throws SQLException {
 
         Connection con = ConnectDB.getConnection();
         if (con == null || con.isClosed()) {
@@ -44,7 +70,9 @@ public class BanHangGiaoDichDAO {
                 KhachHangBanHang khach = layKhachHang(con, maKH);
                 kiemTraNhanVien(con, maNV);
 
-                BigDecimal tamTinh = BigDecimal.ZERO;
+                BigDecimal tienHang = BigDecimal.ZERO;
+                BigDecimal tienSpa = BigDecimal.ZERO;
+                BigDecimal tienThueSpa = BigDecimal.ZERO;
 
                 // Khóa bản ghi sản phẩm để hạn chế bán vượt tồn.
                 for (BanHangService.DongGioHang dong : gio) {
@@ -97,33 +125,92 @@ public class BanHangGiaoDichDAO {
                                     "Giá sản phẩm đã thay đổi. Vui lòng tải lại giỏ hàng.");
                             }
 
-                            tamTinh = tamTinh.add(
+                            tienHang = tienHang.add(
                                 giaDB.multiply(BigDecimal.valueOf(soLuong)));
                         }
                     }
                 }
 
-                BanHangTinhTienService tinhTien =
-                    new BanHangTinhTienService();
+                // Kiem tra lai toan bo dich vu va thu cung trong CSDL
+                // ngay trong transaction truoc khi lap hoa don.
+                String sqlSpa = """
+                    SELECT d.dangHoatDong, d.loaiThuCungApDung,
+                           d.thueSuat, d.giaDaBaoGomThue,
+                           t.loaiThuCung, t.canNang
+                    FROM dbo.DichVuSpa d WITH (HOLDLOCK)
+                    JOIN dbo.ThuCung t WITH (HOLDLOCK)
+                      ON t.maThuCung = ? AND t.maKH = ?
+                    WHERE d.maDichVu = ?
+                    """;
 
-                BanHangTinhTienService.KetQua ketQua =
-                    tinhTien.tinhChinhXac(
-                        tamTinh, khach, diemSuDung);
-
-                if ("TIEN_MAT".equals(phuongThuc)) {
-                    if (tienKhachDua == null ||
-                            tienKhachDua.compareTo(ketQua.phaiThu()) < 0) {
-                        throw new SQLException(
-                            "Số tiền khách đưa chưa đủ thanh toán.");
+                for (BanHangService.DongSpa dong : gioSpa) {
+                    if (dong == null || dong.donGiaDaChot() == null
+                            || dong.donGiaDaChot().signum() < 0)
+                        throw new SQLException("Gia dich vu Spa khong hop le.");
+                    try (PreparedStatement ps = con.prepareStatement(sqlSpa)) {
+                        ps.setString(1, dong.maThuCung());
+                        ps.setString(2, maKH);
+                        ps.setString(3, dong.maDichVu());
+                        try (ResultSet rs = ps.executeQuery()) {
+                            if (!rs.next() || !rs.getBoolean("dangHoatDong"))
+                                throw new SQLException("Dich vu Spa/thu cung khong hop le hoac khac chu.");
+                            String loai = rs.getString("loaiThuCungApDung");
+                            String loaiPet = rs.getString("loaiThuCung");
+                            if (!"CA_HAI".equals(loai) && !loai.equals(loaiPet))
+                                throw new SQLException("Loai thu cung khong dung voi dich vu Spa.");
+                            if (rs.getBigDecimal("canNang").signum() <= 0)
+                                throw new SQLException("Can nang thu cung khong hop le.");
+                            if (dong.thueSuat().compareTo(rs.getBigDecimal("thueSuat")) != 0
+                                    || dong.giaDaBaoGomThue() != rs.getBoolean("giaDaBaoGomThue"))
+                                throw new SQLException("Thue dich vu da thay doi, hay chon dich vu lai.");
+                        }
                     }
+                    tienSpa = tienSpa.add(dong.donGiaDaChot());
+                    tienThueSpa = tienThueSpa.add(dong.tienThue());
+                }
+                BigDecimal tamTinh = tienHang.add(tienSpa)
+                        .add(gioSpa.stream()
+                                .filter(d -> !d.giaDaBaoGomThue())
+                                .map(BanHangService.DongSpa::tienThue)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add));
+
+                BanHangTinhTienService tinhTien = new BanHangTinhTienService();
+                BanHangKhuyenMaiService kmService = new BanHangKhuyenMaiService();
+                BanHangKhuyenMaiService.KetQuaKM ketQuaKM = null;
+                BigDecimal giamHang, giamDiem, giamKM, phaiThu;
+                BigDecimal tongTruocThue, tongThue;
+                int diemTich;
+
+                if (maKhuyenMai != null && !maKhuyenMai.isBlank()) {
+                    if (diemSuDung != 0)
+                        throw new SQLException("Không thể vừa sử dụng điểm vừa áp dụng khuyến mãi.");
+                    var km = new BanHangKhuyenMaiDAO().layChoThanhToan(con, maKhuyenMai);
+                    ketQuaKM = kmService.tinh(km, gio, gioSpa);
+                    giamHang = BigDecimal.ZERO;  // SQL CK_HoaDon_KM_HangTV
+                    giamDiem = BigDecimal.ZERO;
+                    giamKM = ketQuaKM.tienGiamKM();
+                    phaiThu = ketQuaKM.phaiThu();
+                    tongTruocThue = ketQuaKM.tienTruocThue();
+                    tongThue = ketQuaKM.tienThue();
+                    diemTich = 0;
+                } else {
+                    maKhuyenMai = null;
+                    var kq = tinhTien.tinhChinhXac(tamTinh, khach, diemSuDung);
+                    giamHang = kq.giamHang();
+                    giamDiem = kq.giamDiem();
+                    giamKM = BigDecimal.ZERO;
+                    phaiThu = kq.phaiThu();
+                    tongTruocThue = tamTinh.subtract(tienThueSpa);
+                    tongThue = tienThueSpa;
+                    diemTich = tinhTien.tinhDiemDuocTich(
+                        phaiThu, khach, diemSuDung, false);
                 }
 
-                int diemTich = tinhTien.tinhDiemDuocTich(
-                    ketQua.phaiThu(),
-                    khach,
-                    diemSuDung,
-                    false
-                );
+                if ("TIEN_MAT".equals(phuongThuc)) {
+                    if (tienKhachDua == null || tienKhachDua.compareTo(phaiThu) < 0) {
+                        throw new SQLException("Số tiền khách đưa chưa đủ thanh toán.");
+                    }
+                }
 
                 String maHD = "HD" + UUID.randomUUID()
                         .toString().replace("-", "")
@@ -133,7 +220,7 @@ public class BanHangGiaoDichDAO {
 
                 String sqlHD = """
                     INSERT INTO dbo.HoaDon (
-                        maHoaDon, maKH, maNV, maCa,
+                        maHoaDon, maKH, maNV, maCa, maKhuyenMai,
                         nguonDon, phuongThucThanhToan,
                         trangThai, tongTienHang, tongTienSpa,
                         tienGiamKM, tienGiamHangTV,
@@ -141,9 +228,9 @@ public class BanHangGiaoDichDAO {
                         tienPhaiThu, soDiemDuocTich,
                         tongTienTruocThue, tongTienThue, tongTien
                     )
-                    VALUES (?, ?, ?, ?, ?, ?,
-                            'DA_THANH_TOAN', ?, 0,
-                            0, ?, ?, ?, ?, ?, ?, 0, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?,
+                            'DA_THANH_TOAN', ?, ?,
+                            ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """;
 
                 try (PreparedStatement ps = con.prepareStatement(sqlHD)) {
@@ -151,16 +238,21 @@ public class BanHangGiaoDichDAO {
                     ps.setString(2, maKH);
                     ps.setString(3, maNV);
                     ps.setString(4, maCa);
-                    ps.setString(5, nguonDon);
-                    ps.setString(6, phuongThuc);
-                    ps.setBigDecimal(7, tamTinh);
-                    ps.setBigDecimal(8, ketQua.giamHang());
-                    ps.setInt(9, diemSuDung);
-                    ps.setBigDecimal(10, ketQua.giamDiem());
-                    ps.setBigDecimal(11, ketQua.phaiThu());
-                    ps.setInt(12, diemTich);
-                    ps.setBigDecimal(13, tamTinh);
-                    ps.setBigDecimal(14, ketQua.phaiThu());
+                    if (maKhuyenMai == null) ps.setNull(5, Types.VARCHAR);
+                    else ps.setString(5, maKhuyenMai);
+                    ps.setString(6, nguonDon);
+                    ps.setString(7, phuongThuc);
+                    ps.setBigDecimal(8, tienHang);
+                    ps.setBigDecimal(9, tienSpa);
+                    ps.setBigDecimal(10, giamKM);
+                    ps.setBigDecimal(11, giamHang);
+                    ps.setInt(12, diemSuDung);
+                    ps.setBigDecimal(13, giamDiem);
+                    ps.setBigDecimal(14, phaiThu);
+                    ps.setInt(15, diemTich);
+                    ps.setBigDecimal(16, tongTruocThue);
+                    ps.setBigDecimal(17, tongThue);
+                    ps.setBigDecimal(18, phaiThu);
                     ps.executeUpdate();
                 }
 
@@ -169,7 +261,7 @@ public class BanHangGiaoDichDAO {
                     (maHoaDon, maSanPham, soLuong, donGia,
                      thueSuat, giaDaBaoGomThue,
                      tienGiamPhanBo, tienTruocThue, tienThue)
-                    VALUES (?, ?, ?, ?, 0, 0, 0, ?, 0)
+                    VALUES (?, ?, ?, ?, 0, 0, ?, ?, 0)
                     """;
 
                 String sqlKho = """
@@ -191,7 +283,10 @@ public class BanHangGiaoDichDAO {
                         ct.setString(2, sp.maSanPham());
                         ct.setInt(3, dong.soLuong());
                         ct.setBigDecimal(4, sp.giaBan());
-                        ct.setBigDecimal(5, thanhTien);
+                        BigDecimal giamSp = ketQuaKM == null ? BigDecimal.ZERO :
+                                ketQuaKM.giamSanPham().getOrDefault(sp.maSanPham(), BigDecimal.ZERO);
+                        ct.setBigDecimal(5, giamSp);
+                        ct.setBigDecimal(6, thanhTien.subtract(giamSp));
                         ct.executeUpdate();
 
                         kho.setInt(1, dong.soLuong());
@@ -203,6 +298,36 @@ public class BanHangGiaoDichDAO {
                                 "Không thể cập nhật tồn kho: "
                                 + sp.maSanPham());
                         }
+                    }
+                }
+
+                String sqlCtSpa = """
+                    INSERT INTO dbo.ChiTietHoaDon_DichVu
+                      (maHoaDon, maDichVu, maThuCung,
+                       trangThaiThucHien, soLuong, donGia,
+                       thueSuat, giaDaBaoGomThue,
+                       tienGiamPhanBo, tienTruocThue, tienThue)
+                    VALUES (?, ?, ?, 'CHO_LAM', 1, ?, ?, ?, ?, ?, ?)
+                    """;
+                try (PreparedStatement ps = con.prepareStatement(sqlCtSpa)) {
+                    for (int i = 0; i < gioSpa.size(); i++) {
+                        BanHangService.DongSpa dong = gioSpa.get(i);
+                        BigDecimal giamSpa = ketQuaKM == null ? BigDecimal.ZERO :
+                                ketQuaKM.spaSauGiam().get(i).giamPhanBo();
+                        BigDecimal truoc = ketQuaKM == null ? dong.tienTruocThue() :
+                                ketQuaKM.spaSauGiam().get(i).tienTruocThue();
+                        BigDecimal thue = ketQuaKM == null ? dong.tienThue() :
+                                ketQuaKM.spaSauGiam().get(i).tienThue();
+                        ps.setString(1, maHD);
+                        ps.setString(2, dong.maDichVu());
+                        ps.setString(3, dong.maThuCung());
+                        ps.setBigDecimal(4, dong.donGiaDaChot());
+                        ps.setBigDecimal(5, dong.thueSuat());
+                        ps.setBoolean(6, dong.giaDaBaoGomThue());
+                        ps.setBigDecimal(7, giamSpa);
+                        ps.setBigDecimal(8, truoc);
+                        ps.setBigDecimal(9, thue);
+                        ps.executeUpdate();
                     }
                 }
 

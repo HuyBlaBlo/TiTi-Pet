@@ -2,7 +2,6 @@ package com.titipet.gui.dialog;
 
 import com.titipet.bus.KhachHangService;
 import com.titipet.bus.ThuCungService;
-import com.titipet.connectDB.ConnectDB;
 import com.titipet.entity.KhachHang;
 import com.titipet.entity.ThuCung;
 import com.titipet.entity.enums.LoaiThuCungApDung;
@@ -11,6 +10,7 @@ import com.titipet.util.RoundedPannel;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.math.BigDecimal;
 import java.util.List;
 
 public class ThemThuCungDialog extends JDialog{
@@ -23,7 +23,9 @@ public class ThemThuCungDialog extends JDialog{
     private JTextField txtTenThuCung;
     private JComboBox<LoaiThuCungApDung> cbLoai;
     private JTextField txtCanNang;
+    private JTextField txtTinhTrangLong;
     private JTextArea txtGhiChu;
+    private ThuCung thuCungMoi;
 
     // Bảng màu Flat Design
     private static final Color COLOR_PRIMARY_BLUE = new Color(24, 119, 242);
@@ -38,6 +40,22 @@ public class ThemThuCungDialog extends JDialog{
 
         initComponents();
         loadDanhSachKhachHang();
+    }
+
+    /** Đặt lịch Spa mở dialog với chủ nuôi đã chọn và nhận lại thú cưng vừa tạo. */
+    public ThemThuCungDialog(Window owner, KhachHang chuNuoi) {
+        this(owner instanceof Frame ? (Frame) owner : null,
+                new ThuCungService(), new KhachHangService());
+        if (chuNuoi == null) {
+            throw new IllegalArgumentException("Khách hàng không được để trống.");
+        }
+        cbChuNuoi.setSelectedItem(chuNuoi);
+        cbChuNuoi.setEnabled(false);
+        setLocationRelativeTo(owner);
+    }
+
+    public ThuCung getThuCungMoi() {
+        return thuCungMoi;
     }
 
     private void initComponents() {
@@ -154,9 +172,17 @@ public class ThemThuCungDialog extends JDialog{
         txtCanNang = createInputField();
         formPanel.add(createFieldGroup("Cân nặng (kg) *", txtCanNang), gbc);
 
-        // HÀNG 3: GHI CHÚ (CHIẾM HẾT 2 CỘT)
+        // HÀNG 3: TÌNH TRẠNG LÔNG
         gbc.gridx = 0;
         gbc.gridy = 2;
+        gbc.gridwidth = 2;
+        gbc.insets = new Insets(0, 0, 12, 0);
+        txtTinhTrangLong = createInputField();
+        formPanel.add(createFieldGroup("Tình trạng lông", txtTinhTrangLong), gbc);
+
+        // HÀNG 4: GHI CHÚ (CHIẾM HẾT 2 CỘT)
+        gbc.gridx = 0;
+        gbc.gridy = 3;
         gbc.gridwidth = 2;
         gbc.insets = new Insets(0, 0, 16, 0);
 
@@ -182,9 +208,9 @@ public class ThemThuCungDialog extends JDialog{
         ghiChuPanel.add(scrollGhiChu);
         formPanel.add(ghiChuPanel, gbc);
 
-        // HÀNG 4: NÚT XÁC NHẬN LƯU HỒ SƠ
+        // HÀNG 5: NÚT XÁC NHẬN LƯU HỒ SƠ
         gbc.gridx = 0;
-        gbc.gridy = 3;
+        gbc.gridy = 4;
         gbc.gridwidth = 2;
         gbc.insets = new Insets(0, 0, 0, 0);
 
@@ -203,7 +229,7 @@ public class ThemThuCungDialog extends JDialog{
         add(mainCard, BorderLayout.CENTER);
 
         pack();
-        setSize(600, 390);
+        setSize(600, 460);
         setLocationRelativeTo(getParent());
         setResizable(false);
     }
@@ -265,25 +291,37 @@ public class ThemThuCungDialog extends JDialog{
             if (ten.isEmpty()) {
                 throw new IllegalArgumentException("Vui lòng nhập tên thú cưng!");
             }
+            if (ten.length() > 120) {
+                throw new IllegalArgumentException("Tên thú cưng không được vượt quá 120 ký tự.");
+            }
 
-            double canNang;
+            BigDecimal canNang;
             try {
-                canNang = Double.parseDouble(txtCanNang.getText().trim());
+                canNang = new BigDecimal(txtCanNang.getText().trim().replace(',', '.'));
             } catch (NumberFormatException e) {
                 throw new IllegalArgumentException("Cân nặng phải là dạng số hợp lệ (ví dụ: 3.5)!");
+            }
+            if (canNang.signum() <= 0 || canNang.scale() > 2 || canNang.precision() > 8) {
+                throw new IllegalArgumentException("Cân nặng phải lớn hơn 0 và có tối đa 2 chữ số thập phân.");
             }
 
             LoaiThuCungApDung loaiChon = (LoaiThuCungApDung) cbLoai.getSelectedItem();
             String ghiChu = txtGhiChu.getText().trim();
+            String tinhTrangLong = txtTinhTrangLong.getText().trim();
+            if (tinhTrangLong.length() > 300 || ghiChu.length() > 1000) {
+                throw new IllegalArgumentException("Tình trạng lông hoặc ghi chú vượt quá độ dài cho phép.");
+            }
 
             ThuCung tc = new ThuCung();
             tc.setTenThuCung(ten);
             tc.setLoaiThuCung(loaiChon);
-            tc.setCanNang(canNang);
+            tc.setCanNang(canNang.doubleValue());
+            tc.setTinhTrangLong(tinhTrangLong);
             tc.setGhiChu(ghiChu);
             tc.setChuNuoi(chuNuoi);
 
             thuCungService.themThuCung(tc);
+            thuCungMoi = tc;
             JOptionPane.showMessageDialog(this, "Thêm hồ sơ thú cưng thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
             dispose();
         } catch (Exception ex) {

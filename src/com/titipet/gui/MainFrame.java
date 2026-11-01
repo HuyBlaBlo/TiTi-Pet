@@ -54,7 +54,7 @@ public class MainFrame extends JFrame {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         taoGiaoDien();
         // Thêm các pannel
-        dangKyPanel(KHACH_HANG, new KhachHangPanel());
+        dangKyPanel(KHACH_HANG, new KhachHangPanel(authService));
         hienThiManHinh(TRANG_CHU);
         cauHinhCuaSo();
     }
