@@ -706,12 +706,19 @@ GO
 
 SELECT * FROM dbo.SanPham
 
-USE [TiTiPetDB];
-GO
+-- 1. Kiểm tra và hủy tất cả các transaction đang mở dở dang
+WHILE @@TRANCOUNT > 0
+BEGIN
+    ROLLBACK TRANSACTION;
+END;
+
+PRINT N'==> ĐÃ HỦY VÀ GIẢI PHÓNG TOÀN BỘ KHÓA TREO THÀNH CÔNG!';
 
 BEGIN TRANSACTION;
 BEGIN TRY
-    -- 1. DROP CÁC KHÓA NGOẠI TRỎ TỚI dbo.SanPham THEO ĐÚNG TÊN TRONG SCHEMA
+
+    -- BƯỚC 1: DROP TẤT CẢ CÁC RÀNG BUỘC KHÓA NGOẠI TRỎ TỚI dbo.SanPham
+   
     IF OBJECT_ID(N'dbo.FK_ThucAn_SanPham', N'F') IS NOT NULL
         ALTER TABLE dbo.ThucAn DROP CONSTRAINT FK_ThucAn_SanPham;
 
@@ -733,7 +740,7 @@ BEGIN TRY
     IF OBJECT_ID(N'dbo.FK_LSNK_SanPham', N'F') IS NOT NULL
         ALTER TABLE dbo.LichSuNhapKho DROP CONSTRAINT FK_LSNK_SanPham;
 
-    -- 2. CẬP NHẬT MÃ TRÊN BẢNG CHÍNH dbo.SanPham
+    -- BƯỚC 2: CẬP NHẬT BẢNG GỐC dbo.SanPham
     UPDATE dbo.SanPham SET maSanPham = 'TA001' WHERE maSanPham IN ('SP_TEST_TA01', 'SP001');
     UPDATE dbo.SanPham SET maSanPham = 'TA002' WHERE maSanPham IN ('SP_TEST_TA02', 'SP002');
     UPDATE dbo.SanPham SET maSanPham = 'TA003' WHERE maSanPham IN ('SP_TEST_TA03', 'SP003');
@@ -742,7 +749,9 @@ BEGIN TRY
     UPDATE dbo.SanPham SET maSanPham = 'PK002' WHERE maSanPham IN ('SP_TEST_PK02', 'SP005');
     UPDATE dbo.SanPham SET maSanPham = 'PK003' WHERE maSanPham IN ('SP_TEST_OFF', 'SP006');
 
-    -- 3. CẬP NHẬT ĐỒNG BỘ TRÊN BẢNG CON dbo.ThucAn
+    -- BƯỚC 3: CẬP NHẬT CÁC BẢNG LIÊN QUAN
+
+    -- 1. Bảng ThucAn
     IF OBJECT_ID(N'dbo.ThucAn', N'U') IS NOT NULL
     BEGIN
         UPDATE dbo.ThucAn SET maSanPham = 'TA001' WHERE maSanPham IN ('SP_TEST_TA01', 'SP001');
@@ -750,7 +759,7 @@ BEGIN TRY
         UPDATE dbo.ThucAn SET maSanPham = 'TA003' WHERE maSanPham IN ('SP_TEST_TA03', 'SP003');
     END
 
-    -- 4. CẬP NHẬT ĐỒNG BỘ TRÊN BẢNG CON dbo.PhuKien
+    -- 2. Bảng PhuKien
     IF OBJECT_ID(N'dbo.PhuKien', N'U') IS NOT NULL
     BEGIN
         UPDATE dbo.PhuKien SET maSanPham = 'PK001' WHERE maSanPham IN ('SP_TEST_PK01', 'SP004');
@@ -758,7 +767,7 @@ BEGIN TRY
         UPDATE dbo.PhuKien SET maSanPham = 'PK003' WHERE maSanPham IN ('SP_TEST_OFF', 'SP006');
     END
 
-    -- 5. CẬP NHẬT ĐỒNG BỘ TRÊN dbo.ChiTietHoaDon_SanPham
+    -- 3. Bảng ChiTietHoaDon_SanPham
     IF OBJECT_ID(N'dbo.ChiTietHoaDon_SanPham', N'U') IS NOT NULL
     BEGIN
         UPDATE dbo.ChiTietHoaDon_SanPham SET maSanPham = 'TA001' WHERE maSanPham IN ('SP_TEST_TA01', 'SP001');
@@ -769,7 +778,7 @@ BEGIN TRY
         UPDATE dbo.ChiTietHoaDon_SanPham SET maSanPham = 'PK003' WHERE maSanPham IN ('SP_TEST_OFF', 'SP006');
     END
 
-    -- 6. CẬP NHẬT ĐỒNG BỘ TRÊN dbo.KhuyenMai (NẾU CÓ ÁP DỤNG SP)
+    -- 4. Bảng KhuyenMai
     IF OBJECT_ID(N'dbo.KhuyenMai', N'U') IS NOT NULL
     BEGIN
         UPDATE dbo.KhuyenMai SET maSanPhamApDung = 'TA001' WHERE maSanPhamApDung IN ('SP_TEST_TA01', 'SP001');
@@ -780,7 +789,7 @@ BEGIN TRY
         UPDATE dbo.KhuyenMai SET maSanPhamApDung = 'PK003' WHERE maSanPhamApDung IN ('SP_TEST_OFF', 'SP006');
     END
 
-    -- 7. CẬP NHẬT ĐỒNG BỘ TRÊN dbo.DoiTra (NẾU CÓ DỮ LIỆU ĐỔI TRẢ)
+    -- 5. Bảng DoiTra (cả mã sản phẩm cũ và mới)
     IF OBJECT_ID(N'dbo.DoiTra', N'U') IS NOT NULL
     BEGIN
         UPDATE dbo.DoiTra SET maSanPhamCu = 'TA001' WHERE maSanPhamCu IN ('SP_TEST_TA01', 'SP001');
@@ -789,7 +798,7 @@ BEGIN TRY
         UPDATE dbo.DoiTra SET maSanPhamMoi = 'PK001' WHERE maSanPhamMoi IN ('SP_TEST_PK01', 'SP004');
     END
 
-    -- 8. CẬP NHẬT ĐỒNG BỘ TRÊN dbo.LichSuNhapKho (NẾU CÓ)
+    -- 6. Bảng LichSuNhapKho
     IF OBJECT_ID(N'dbo.LichSuNhapKho', N'U') IS NOT NULL
     BEGIN
         UPDATE dbo.LichSuNhapKho SET maSanPham = 'TA001' WHERE maSanPham IN ('SP_TEST_TA01', 'SP001');
@@ -800,7 +809,7 @@ BEGIN TRY
         UPDATE dbo.LichSuNhapKho SET maSanPham = 'PK003' WHERE maSanPham IN ('SP_TEST_OFF', 'SP006');
     END
 
-    -- 9. TẠO LẠI CÁC RÀNG BUỘC KÈM CASCADE
+    -- BƯỚC 4: TẠO LẠI CÁC RÀNG BUỘC KÈM CASCADE
     ALTER TABLE dbo.ThucAn WITH CHECK 
         ADD CONSTRAINT FK_ThucAn_SanPham FOREIGN KEY (maSanPham) 
         REFERENCES dbo.SanPham (maSanPham) ON UPDATE CASCADE ON DELETE CASCADE;
@@ -836,22 +845,10 @@ BEGIN TRY
             REFERENCES dbo.SanPham (maSanPham) ON UPDATE CASCADE;
 
     COMMIT TRANSACTION;
-    PRINT N'==> CHUYỂN ĐỔI MÃ SẢN PHẨM SANG TAxxx & PKxxx THÀNH CÔNG!';
+    PRINT N'==> ĐÃ CẬP NHẬT TOÀN BỘ CÁC BẢNG LIÊN QUAN THÀNH CÔNG!';
 END TRY
 BEGIN CATCH
     ROLLBACK TRANSACTION;
     PRINT N'Lỗi thực thi: ' + ERROR_MESSAGE();
 END CATCH
 GO
-
-USE [TiTiPetDB];
-GO
-
--- 1. Kiểm tra và hủy tất cả các transaction đang mở dở dang
-WHILE @@TRANCOUNT > 0
-BEGIN
-    ROLLBACK TRANSACTION;
-END;
-
-PRINT N'==> ĐÃ HỦY VÀ GIẢI PHÓNG TOÀN BỘ KHÓA TREO THÀNH CÔNG!';
-
