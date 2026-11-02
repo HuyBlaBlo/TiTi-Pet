@@ -74,14 +74,6 @@ public class DichVuSpa {
     public void setLoaiThuCungApDung(LoaiThuCungApDung loaiThuCungApDung) {
         this.loaiThuCungApDung = loaiThuCungApDung;
     }
-    
-    public int getThoiLuongPhut() {
-		return thoiLuongPhut;
-	}
-
-	public void setThoiLuongPhut(int thoiLuongPhut) {
-		this.thoiLuongPhut = thoiLuongPhut;
-	}
 
 	public boolean isDangHoatDong() {
         return dangHoatDong;
@@ -90,8 +82,6 @@ public class DichVuSpa {
     public void setDangHoatDong(boolean dangHoatDong) {
         this.dangHoatDong = dangHoatDong;
     }
-    private int thoiLuongPhut;
-
     public int getThoiLuongPhut() {
         return thoiLuongPhut;
     }
