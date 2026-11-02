@@ -38,24 +38,4 @@ public final class ConnectDB {
     public static Connection getConnection() {
         return con;
     }
-
-    // Phương thức mới: tạo kết nối riêng
-    public Connection moKetNoiMoi() throws SQLException {
-
-        String url = "jdbc:sqlserver://localhost:1433;"
-                + "databaseName=TiTiPetDB;"
-                + "encrypt=true;"
-                + "trustServerCertificate=true";
-
-        String user = System.getenv("TITIPET_DB_USERNAME");
-        String password = System.getenv("TITIPET_DB_PASSWORD");
-
-        if (user == null || password == null) {
-            throw new SQLException(
-                    "Chưa cấu hình tài khoản SQL Server."
-            );
-        }
-
-        return DriverManager.getConnection(url, user, password);
-    }
 }
