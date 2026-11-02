@@ -1,12 +1,10 @@
 package com.titipet.dao;
 
 import com.titipet.connectDB.ConnectDB;
-import com.titipet.entity.DichVuSpa;
 import com.titipet.entity.PhuKien;
 import com.titipet.entity.SanPham;
 import com.titipet.entity.ThucAn;
 import com.titipet.entity.enums.LoaiSanPham;
-import com.titipet.entity.enums.LoaiThuCungApDung;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -19,10 +17,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SanPhamDAO {
-	/**
-     * Lấy danh sách toàn bộ sản phẩm đang kinh doanh kèm thông tin bảng con
+
+    private Connection getActiveConnection() throws SQLException {
+        Connection con = ConnectDB.getConnection();
+        if (con == null || con.isClosed()) {
+            ConnectDB.getInstance().connect();
+            con = ConnectDB.getConnection();
+        }
+        return con;
+    }
+
+    /**
+     * Lấy toàn bộ danh sách sản phẩm (Thức ăn và Phụ kiện) kèm thông tin bảng con
      */
-	public List<SanPham> layDanhSachSanPham() throws SQLException {
+    public List<SanPham> layDanhSachSanPham() throws SQLException {
         List<SanPham> list = new ArrayList<>();
         String sql = "SELECT sp.maSanPham, sp.tenSanPham, sp.giaBan, sp.giaNhap, sp.soLuongTonKho, "
                    + "       sp.maVach, sp.nguongCanhBaoTon, sp.thueSuat, sp.loaiSanPham, "
@@ -34,13 +42,7 @@ public class SanPhamDAO {
                    + "WHERE sp.dangKinhDoanh = 1 "
                    + "ORDER BY sp.maSanPham ASC";
 
-        Connection con = ConnectDB.getInstance().getConnection();
-        if (con == null || con.isClosed()) {
-            ConnectDB.getInstance().connect();
-            con = ConnectDB.getInstance().getConnection();
-        }
-
-        try (PreparedStatement ps = con.prepareStatement(sql);
+        try (PreparedStatement ps = getActiveConnection().prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 String ma = rs.getString("maSanPham");
@@ -93,69 +95,17 @@ public class SanPhamDAO {
     }
 
     /**
-     * Lấy danh sách Dịch vụ Spa trực tiếp qua Entity DichVuSpa
-     */
-    public List<DichVuSpa> layDanhSachDichVuSpa() throws SQLException {
-        List<DichVuSpa> list = new ArrayList<>();
-        String sql = "SELECT maDichVu, tenDichVu, donGiaCoBan, thueSuat, giaDaBaoGomThue, loaiThuCungApDung, dangHoatDong "
-                   + "FROM dbo.DichVuSpa "
-                   + "WHERE dangHoatDong = 1 "
-                   + "ORDER BY maDichVu ASC";
-
-        Connection con = ConnectDB.getInstance().getConnection();
-        if (con == null || con.isClosed()) {
-            ConnectDB.getInstance().connect();
-            con = ConnectDB.getInstance().getConnection();
-        }
-
-        try (PreparedStatement ps = con.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                DichVuSpa dv = new DichVuSpa();
-                dv.setMaDichVu(rs.getString("maDichVu"));
-                dv.setTenDichVu(rs.getString("tenDichVu"));
-                dv.setDonGiaCoBan(rs.getBigDecimal("donGiaCoBan"));
-                dv.setThueSuat(rs.getBigDecimal("thueSuat"));
-                dv.setGiaDaBaoGomThue(rs.getBoolean("giaDaBaoGomThue"));
-                dv.setDangHoatDong(rs.getBoolean("dangHoatDong"));
-
-                String loaiStr = rs.getString("loaiThuCungApDung");
-                try {
-                    dv.setLoaiThuCungApDung(LoaiThuCungApDung.valueOf(loaiStr));
-                } catch (Exception e) {
-                    dv.setLoaiThuCungApDung(LoaiThuCungApDung.CA_HAI);
-                }
-
-                // Gán thời lượng mặc định hiển thị theo tên dịch vụ
-                int thoiGian = 60;
-                String tenLower = dv.getTenDichVu().toLowerCase();
-                if (tenLower.contains("cắt móng")) thoiGian = 30;
-                else if (tenLower.contains("cắt tỉa")) thoiGian = 45;
-                else if (tenLower.contains("tắm sấy")) thoiGian = 90;
-                dv.setThoiLuongPhut(thoiGian);
-
-                list.add(dv);
-            }
-        }
-        return list;
-    }
-
-    /**
-     * Tự động sinh mã sản phẩm tiếp theo: TAxxx cho Thức ăn, PKxxx cho Phụ kiện
+     * Tự động sinh mã sản phẩm tiếp theo theo loại:
+     * - LoaiSanPham.THUC_AN  -> TA001, TA002, TA003,...
+     * - LoaiSanPham.PHU_KIEN -> PK001, PK002, PK003,...
      */
     public String taoMaSanPhamMoi(LoaiSanPham loai) throws SQLException {
         String prefix = (loai == LoaiSanPham.THUC_AN) ? "TA" : "PK";
         String regex = "^" + prefix + "\\d+$";
         String sql = "SELECT maSanPham FROM dbo.SanPham WHERE loaiSanPham = ?";
 
-        Connection con = ConnectDB.getInstance().getConnection();
-        if (con == null || con.isClosed()) {
-            ConnectDB.getInstance().connect();
-            con = ConnectDB.getInstance().getConnection();
-        }
-
         int maxIndex = 0;
-        try (PreparedStatement ps = con.prepareStatement(sql)) {
+        try (PreparedStatement ps = getActiveConnection().prepareStatement(sql)) {
             ps.setString(1, loai.name());
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -175,14 +125,10 @@ public class SanPhamDAO {
     }
 
     /**
-     * Thêm mới sản phẩm vào CSDL kèm bảng con
+     * Thêm mới sản phẩm vào CSDL kèm theo bảng con tương ứng
      */
     public boolean themSanPham(SanPham sp, LocalDateTime hanSuDung) throws SQLException {
-        Connection con = ConnectDB.getInstance().getConnection();
-        if (con == null || con.isClosed()) {
-            ConnectDB.getInstance().connect();
-            con = ConnectDB.getInstance().getConnection();
-        }
+        Connection con = getActiveConnection();
         boolean autoCommitGoc = con.getAutoCommit();
         try {
             con.setAutoCommit(false);
@@ -229,14 +175,10 @@ public class SanPhamDAO {
     }
 
     /**
-     * Cập nhật thông tin sản phẩm
+     * Cập nhật thông tin sản phẩm và hạn sử dụng bảng con (nếu có)
      */
     public boolean capNhatSanPham(SanPham sp, LocalDateTime hanSuDungMoi) throws SQLException {
-        Connection con = ConnectDB.getInstance().getConnection();
-        if (con == null || con.isClosed()) {
-            ConnectDB.getInstance().connect();
-            con = ConnectDB.getInstance().getConnection();
-        }
+        Connection con = getActiveConnection();
         boolean autoCommitGoc = con.getAutoCommit();
         try {
             con.setAutoCommit(false);
@@ -267,25 +209,6 @@ public class SanPhamDAO {
             throw ex;
         } finally {
             con.setAutoCommit(autoCommitGoc);
-        }
-    }
-
-    public static void main(String[] args) {
-        try {
-            System.out.println("=== TEST SanPhamDAO (DUNG DichVuSpa ENTITY) ===");
-            ConnectDB.getInstance().connect();
-            SanPhamDAO dao = new SanPhamDAO();
-
-            List<DichVuSpa> dsSpa = dao.layDanhSachDichVuSpa();
-            System.out.println("Tổng số dịch vụ Spa: " + dsSpa.size());
-            for (DichVuSpa dv : dsSpa) {
-                System.out.printf("  [%s] %-25s | Đơn giá: %-10s | Áp dụng: %s | Thời lượng: %d phút\n",
-                        dv.getMaDichVu(), dv.getTenDichVu(), dv.getDonGiaCoBan(), dv.getLoaiThuCungApDung(), dv.getThoiLuongPhut());
-            }
-
-            System.out.println("=== TEST THÀNH CÔNG ===");
-        } catch (Exception ex) {
-            ex.printStackTrace();
         }
     }
 
