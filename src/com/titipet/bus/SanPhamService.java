@@ -114,8 +114,16 @@ public class SanPhamService {
 
         sanPhamDAO.capNhatSanPham(sp, hanSuDung);
     }
+    
+    // 4. NGỪNG KINH DOANH 
+    public boolean ngungKinhDoanhSanPham(String maSP) throws SQLException {
+        if (maSP == null || maSP.isBlank()) {
+            throw new IllegalArgumentException("Mã sản phẩm không hợp lệ!");
+        }
+        return sanPhamDAO.ngungKinhDoanhSanPham(maSP);
+    }
 
-    // 4. VALIDATION
+    // 5. VALIDATION
     private void kiemTraHopLeSanPham(SanPham sp) {
         if (sp == null) {
             throw new IllegalArgumentException("Dữ liệu sản phẩm không được rỗng!");

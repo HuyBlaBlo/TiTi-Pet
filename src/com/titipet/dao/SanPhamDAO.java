@@ -211,5 +211,17 @@ public class SanPhamDAO {
             con.setAutoCommit(autoCommitGoc);
         }
     }
+    
+    /**
+     * Ngừng kinh doanh sản phẩm
+     * Đặt dangKinhDoanh = 0 để ẩn khỏi POS và danh mục bán lẻ mà không làm mất lịch sử giao dịch.
+     */
+    public boolean ngungKinhDoanhSanPham(String maSP) throws SQLException {
+        String sql = "UPDATE dbo.SanPham SET dangKinhDoanh = 0 WHERE maSanPham = ?";
+        try (PreparedStatement ps = getActiveConnection().prepareStatement(sql)) {
+            ps.setString(1, maSP);
+            return ps.executeUpdate() > 0;
+        }
+    }
 
 }

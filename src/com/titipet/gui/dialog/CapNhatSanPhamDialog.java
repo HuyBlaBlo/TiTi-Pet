@@ -29,9 +29,12 @@ public class CapNhatSanPhamDialog extends JDialog {
     private JComboBox<String> cboHoTroDoiTra;
 
     private JButton btnCapNhatMatHang;
+    private JButton btnNgungKinhDoanh;
 
     // BẢNG MÀU THIẾT KẾ PHẲNG
     private static final Color COLOR_PRIMARY_BLUE = new Color(24, 119, 242);
+    private static final Color COLOR_DANGER_RED = new Color(220, 38, 38);
+    private static final Color COLOR_DANGER_BG = new Color(254, 242, 242);
     private static final Color COLOR_TEXT_DARK = new Color(30, 41, 59);
     private static final Color COLOR_TEXT_MUTED = new Color(100, 116, 139);
     private static final Color COLOR_BORDER = new Color(203, 213, 225);
@@ -116,12 +119,34 @@ public class CapNhatSanPhamDialog extends JDialog {
 
         add(pnlContent, BorderLayout.CENTER);
 
-        // 3. NÚT CẬP NHẬT
-        JPanel pnlFooter = new JPanel(new BorderLayout());
+        // 3. FOOTER ACTIONS: Bên trái có nút Ngừng kinh doanh, bên phải là Cập nhật
+        JPanel pnlFooter = new JPanel(new BorderLayout(12, 0));
         pnlFooter.setBackground(COLOR_BG);
         pnlFooter.setBorder(new EmptyBorder(0, 24, 22, 24));
 
-        btnCapNhatMatHang = new JButton("Cập nhật mặt hàng") {
+        btnNgungKinhDoanh = new JButton("Ngừng kinh doanh") {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(COLOR_DANGER_BG);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                g2.setColor(new Color(254, 202, 202));
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        btnNgungKinhDoanh.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnNgungKinhDoanh.setForeground(COLOR_DANGER_RED);
+        btnNgungKinhDoanh.setPreferredSize(new Dimension(170, 42));
+        btnNgungKinhDoanh.setContentAreaFilled(false);
+        btnNgungKinhDoanh.setBorderPainted(false);
+        btnNgungKinhDoanh.setFocusPainted(false);
+        btnNgungKinhDoanh.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnNgungKinhDoanh.addActionListener(e -> xuLyNgungKinhDoanh());
+
+        btnCapNhatMatHang = new JButton("✓ Cập nhật mặt hàng") {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
@@ -132,17 +157,16 @@ public class CapNhatSanPhamDialog extends JDialog {
                 super.paintComponent(g);
             }
         };
-
-        btnCapNhatMatHang.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnCapNhatMatHang.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnCapNhatMatHang.setForeground(Color.WHITE);
         btnCapNhatMatHang.setPreferredSize(new Dimension(0, 42));
         btnCapNhatMatHang.setContentAreaFilled(false);
         btnCapNhatMatHang.setBorderPainted(false);
         btnCapNhatMatHang.setFocusPainted(false);
-        btnCapNhatMatHang.setOpaque(false);
         btnCapNhatMatHang.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnCapNhatMatHang.addActionListener(e -> xuLyCapNhat());
 
+        pnlFooter.add(btnNgungKinhDoanh, BorderLayout.WEST);
         pnlFooter.add(btnCapNhatMatHang, BorderLayout.CENTER);
         add(pnlFooter, BorderLayout.SOUTH);
     }
@@ -207,6 +231,29 @@ public class CapNhatSanPhamDialog extends JDialog {
             txtHanSuDung.setEnabled(false);
             txtHanSuDung.setBackground(COLOR_READONLY_BG);
             txtHanSuDung.setText("Không áp dụng");
+        }
+    }
+    
+    private void xuLyNgungKinhDoanh() {
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Bạn có chắc muốn NGỪNG KINH DOANH mặt hàng: " + sanPhamHienTai.getTenSanPham() + "?\n"
+                + "(Mặt hàng sẽ ẩn khỏi màn hình POS và danh mục bán lẻ, nhưng giữ nguyên lịch sử bán hàng)",
+                "Xác nhận ngừng kinh doanh",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            try {
+                boolean ok = sanPhamService.ngungKinhDoanhSanPham(sanPhamHienTai.getMaSanPham());
+                if (ok) {
+                    daCapNhatThanhCong = true;
+                    JOptionPane.showMessageDialog(this, "Đã ngừng kinh doanh sản phẩm thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                    dispose();
+                } else {
+                    JOptionPane.showMessageDialog(this, "Không thể cập nhật trạng thái mặt hàng!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Lỗi: " + ex.getMessage(), "Lỗi hệ thống", JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
 
