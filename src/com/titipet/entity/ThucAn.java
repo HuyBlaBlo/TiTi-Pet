@@ -10,9 +10,9 @@ public class ThucAn extends SanPham{
     private LocalDateTime hanSuDung;
     private double trongLuong;
 
-    public ThucAn(LocalDateTime hanSuDung, double trongLuong) {
-        this.hanSuDung = hanSuDung;
-        this.trongLuong = trongLuong;
+    public ThucAn() {
+        super();
+        setLoaiSanPham(LoaiSanPham.THUC_AN);
     }
 
     public ThucAn(String maSanPham, String tenSanPham, BigDecimal giaBan, BigDecimal giaNhap, int soLuongTonKho, String maVach, BigDecimal thueSuat, LoaiSanPham loaiSanPham, int nguongCanhBaoTon, LocalDateTime hanSuDung, double trongLuong) {
@@ -21,11 +21,23 @@ public class ThucAn extends SanPham{
         this.trongLuong = trongLuong;
     }
 
-    public ThucAn() {
-        super();
-    }
+    public LocalDateTime getHanSuDung() {
+		return hanSuDung;
+	}
 
-    // Kiểm tra thức ăn sắp hết hạn hoặc đã hết hạn
+	public void setHanSuDung(LocalDateTime hanSuDung) {
+		this.hanSuDung = hanSuDung;
+	}
+
+	public double getTrongLuong() {
+		return trongLuong;
+	}
+
+	public void setTrongLuong(double trongLuong) {
+		this.trongLuong = trongLuong;
+	}
+
+	// Kiểm tra thức ăn sắp hết hạn hoặc đã hết hạn
     public boolean kiemTraCanDate(int soNgayCanhBao) {
 
         if (hanSuDung == null || soNgayCanhBao < 0) {
