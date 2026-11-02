@@ -10,6 +10,7 @@ import com.titipet.gui.panel.ChotCaPanel;
 import com.titipet.gui.panel.DoiTraPanel;
 import com.titipet.gui.panel.KhachHangPanel;
 import com.titipet.gui.panel.LichHenPanel;
+import com.titipet.gui.panel.TiepNhanSpaPanel;
 import com.titipet.gui.panel.ThuCungPanel;
 import com.titipet.gui.panel.TrangChuPanel;
 
@@ -178,6 +179,11 @@ public class MainFrame extends JFrame {
      * màn hình chưa gắn panel sẽ có nền trống */
     public void hienThiManHinh(String maManHinh) {
         kiemTraMaManHinh(maManHinh);
+        // Panel tiếp nhận tự truy vấn CSDL khi khởi tạo. Chỉ tạo khi mở menu này,
+        // để bảng CSDL chưa hoàn thiện không chặn các màn hình khác lúc đăng nhập.
+        if (TIEP_NHAN_SPA.equals(maManHinh) && !panels.containsKey(TIEP_NHAN_SPA)) {
+            dangKyPanel(TIEP_NHAN_SPA, new TiepNhanSpaPanel());
+        }
         manHinhHienTai = maManHinh;
         sidebar.chonManHinh(maManHinh);
         topBar.setTieuDe(sidebar.layTieuDe(maManHinh));
