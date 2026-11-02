@@ -2,7 +2,8 @@ package com.titipet.entity.enums;
 
 public enum LoaiThuCungApDung {
 	CHO("Chó"),
-    MEO("Mèo");
+    MEO("Mèo"),
+    CA_HAI("Cả hai");
 
     private final String tenHienThi;
 
