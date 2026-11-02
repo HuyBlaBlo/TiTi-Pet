@@ -82,8 +82,8 @@ public class KhachHangPanel extends JPanel{
         }
 
         initComponents();
-        apDungPhanQuyen();
         loadData("");
+        apDungPhanQuyen();
     }
     
     /**
@@ -93,8 +93,8 @@ public class KhachHangPanel extends JPanel{
         this.vaiTroHienTai = (vaiTroNguoiDung != null) ? vaiTroNguoiDung : VaiTro.QUAN_LY;
         this.khachHangService = new KhachHangService();
         initComponents();
-        apDungPhanQuyen();
         loadData("");
+        apDungPhanQuyen();
     }
 
     /**
@@ -443,7 +443,7 @@ public class KhachHangPanel extends JPanel{
    
     // 4. LOGIC PHÂN QUYỀN
     /**
-     * PHÂN QUYỀN: Thợ Spa không được phép thêm khách hàng
+     * PHÂN QUYỀN: Thợ Spa không được phép thêm và cập nhật khách hàng
      */
     private void apDungPhanQuyen() {
         boolean laThoSpa;
@@ -453,8 +453,29 @@ public class KhachHangPanel extends JPanel{
             laThoSpa = (vaiTroHienTai == VaiTro.THO_SPA);
         }
 
-        // Ẩn nút đối với Thợ Spa, hiển thị cho Quản lý và Thu ngân
-        btnThemKhachHang.setVisible(!laThoSpa);
+        // 1. Phân quyền nút "Thêm khách hàng"
+        if (btnThemKhachHang != null) {
+            btnThemKhachHang.setVisible(!laThoSpa);
+        }
+        
+     // 2. Phân quyền cột "THAO TÁC" trên bảng
+        if (tblKhachHang != null) {
+            int viTriCotThaoTac = -1;
+            // Tìm xem cột "THAO TÁC" hiện có đang hiển thị trên bảng không
+            for (int i = 0; i < tblKhachHang.getColumnCount(); i++) {
+                if ("THAO TÁC".equalsIgnoreCase(tblKhachHang.getColumnName(i))) {
+                    viTriCotThaoTac = i;
+                    break;
+                }
+            }
+
+            if (laThoSpa) {
+                // Nếu là Thợ Spa: Xóa cột THAO TÁC khỏi vùng hiển thị của bảng
+                if (viTriCotThaoTac != -1) {
+                    tblKhachHang.removeColumn(tblKhachHang.getColumnModel().getColumn(viTriCotThaoTac));
+                }
+            }
+        }
     }
 
     public void setVaiTroHienTai(VaiTro vaiTroMoi) {
