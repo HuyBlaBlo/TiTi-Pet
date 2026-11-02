@@ -37,7 +37,7 @@ public class KhoService {
         return "Bình thường";
     }
 
-    public void xuLyNhapKho(String maSP, int soLuongNhap, BigDecimal giaNhapMoi, LocalDate hsdMoi) throws Exception {
+    public void xuLyNhapKho(String maSP, int soLuongNhap, BigDecimal giaNhapMoi, LocalDate hsdMoi, String ghiChu) throws Exception {
         if (maSP == null || maSP.isBlank()) {
             throw new IllegalArgumentException("Vui lòng chọn sản phẩm cần nhập!");
         }
@@ -47,6 +47,11 @@ public class KhoService {
         if (giaNhapMoi != null && giaNhapMoi.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Đơn giá nhập không được nhỏ hơn 0!");
         }
-        khoHangDAO.nhapKhoSanPham(maSP, soLuongNhap, giaNhapMoi, hsdMoi);
+        khoHangDAO.nhapKhoSanPham(maSP, soLuongNhap, giaNhapMoi, hsdMoi, ghiChu);
     }
+
+    public List<KhoHangDAO.LichSuNhapItem> layDanhSachLichSuNhapKho() throws SQLException {
+        return khoHangDAO.layDanhSachLichSuNhapKho();
+    }
+
 }

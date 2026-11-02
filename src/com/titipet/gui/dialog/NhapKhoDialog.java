@@ -347,7 +347,8 @@ public class NhapKhoDialog extends JDialog {
             }
 
             // 4. Gọi tầng BUS thực hiện nghiệp vụ
-            khoHangService.xuLyNhapKho(sp.getMaSanPham(), soLuong, giaNhap, hsdMoi);
+            String ghiChu = txtGhiChu.getText().trim();
+            khoHangService.xuLyNhapKho(sp.getMaSanPham(), soLuong, giaNhap, hsdMoi, ghiChu);
 
             JOptionPane.showMessageDialog(this,
                     "Nhập kho thành công!\nSản phẩm: " + sp.getTenSanPham() 

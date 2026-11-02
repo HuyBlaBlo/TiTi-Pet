@@ -140,4 +140,123 @@ public class KhoHangDAO {
             con.setAutoCommit(autoCommitGoc);
         }
     }
+    
+ // --- DTO Lịch sử nhập kho ---
+    public static class LichSuNhapItem {
+        public long maLichSu;
+        public String maSP;
+        public String tenSP;
+        public int soLuongNhap;
+        public BigDecimal giaNhap;
+        public LocalDate hanSuDungMoi;
+        public java.time.LocalDateTime ngayNhap;
+        public String ghiChu;
+
+        public LichSuNhapItem(long maLichSu, String maSP, String tenSP, int soLuongNhap,
+                              BigDecimal giaNhap, LocalDate hanSuDungMoi, 
+                              java.time.LocalDateTime ngayNhap, String ghiChu) {
+            this.maLichSu = maLichSu;
+            this.maSP = maSP;
+            this.tenSP = tenSP;
+            this.soLuongNhap = soLuongNhap;
+            this.giaNhap = giaNhap;
+            this.hanSuDungMoi = hanSuDungMoi;
+            this.ngayNhap = ngayNhap;
+            this.ghiChu = ghiChu;
+        }
+    }
+
+    // --- Cập nhật phương thức nhapKhoSanPham: ghi thêm vào dbo.LichSuNhapKho ---
+    public boolean nhapKhoSanPham(String maSP, int soLuongNhapThem, BigDecimal giaNhapMoi, 
+                                  LocalDate hsdMoi, String ghiChu) throws SQLException {
+        Connection con = ConnectDB.getInstance().getConnection();
+        if (con == null || con.isClosed()) {
+            ConnectDB.getInstance().connect();
+            con = ConnectDB.getInstance().getConnection();
+        }
+
+        boolean autoCommitGoc = con.getAutoCommit();
+        try {
+            con.setAutoCommit(false);
+
+            // 1. Cập nhật tồn kho và giá nhập trên SanPham
+            String sqlSP = "UPDATE dbo.SanPham SET soLuongTonKho = soLuongTonKho + ?, giaNhap = ? WHERE maSanPham = ?";
+            try (PreparedStatement psSP = con.prepareStatement(sqlSP)) {
+                psSP.setInt(1, soLuongNhapThem);
+                psSP.setBigDecimal(2, giaNhapMoi != null ? giaNhapMoi : BigDecimal.ZERO);
+                psSP.setString(3, maSP);
+                psSP.executeUpdate();
+            }
+
+            // 2. Cập nhật HSD trên ThucAn (nếu có)
+            if (hsdMoi != null) {
+                String sqlTA = "UPDATE dbo.ThucAn SET hanSuDung = ? WHERE maSanPham = ?";
+                try (PreparedStatement psTA = con.prepareStatement(sqlTA)) {
+                    psTA.setDate(1, java.sql.Date.valueOf(hsdMoi));
+                    psTA.setString(2, maSP);
+                    psTA.executeUpdate();
+                }
+            }
+
+            // 3. Ghi vào bảng LichSuNhapKho
+            String sqlLS = "INSERT INTO dbo.LichSuNhapKho (maSanPham, soLuongNhap, giaNhap, hanSuDungMoi, ghiChu) "
+                         + "VALUES (?, ?, ?, ?, ?)";
+            try (PreparedStatement psLS = con.prepareStatement(sqlLS)) {
+                psLS.setString(1, maSP);
+                psLS.setInt(2, soLuongNhapThem);
+                psLS.setBigDecimal(3, giaNhapMoi != null ? giaNhapMoi : BigDecimal.ZERO);
+                if (hsdMoi != null) {
+                    psLS.setDate(4, java.sql.Date.valueOf(hsdMoi));
+                } else {
+                    psLS.setNull(4, java.sql.Types.DATE);
+                }
+                psLS.setString(5, ghiChu);
+                psLS.executeUpdate();
+            }
+
+            con.commit();
+            return true;
+        } catch (SQLException ex) {
+            con.rollback();
+            throw ex;
+        } finally {
+            con.setAutoCommit(autoCommitGoc);
+        }
+    }
+
+    // --- Phương thức lấy danh sách lịch sử nhập kho gần nhất ---
+    public List<LichSuNhapItem> layDanhSachLichSuNhapKho() throws SQLException {
+        List<LichSuNhapItem> list = new ArrayList<>();
+        String sql = "SELECT ls.maLichSu, ls.maSanPham, sp.tenSanPham, ls.soLuongNhap, "
+                   + "       ls.giaNhap, ls.hanSuDungMoi, ls.ngayNhap, ls.ghiChu "
+                   + "FROM dbo.LichSuNhapKho ls "
+                   + "JOIN dbo.SanPham sp ON ls.maSanPham = sp.maSanPham "
+                   + "ORDER BY ls.ngayNhap DESC";
+
+        Connection con = ConnectDB.getInstance().getConnection();
+        if (con == null || con.isClosed()) {
+            ConnectDB.getInstance().connect();
+            con = ConnectDB.getInstance().getConnection();
+        }
+
+        try (PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                java.sql.Date dHsd = rs.getDate("hanSuDungMoi");
+                java.sql.Timestamp tNgayNhap = rs.getTimestamp("ngayNhap");
+
+                list.add(new LichSuNhapItem(
+                        rs.getLong("maLichSu"),
+                        rs.getString("maSanPham"),
+                        rs.getString("tenSanPham"),
+                        rs.getInt("soLuongNhap"),
+                        rs.getBigDecimal("giaNhap"),
+                        dHsd != null ? dHsd.toLocalDate() : null,
+                        tNgayNhap != null ? tNgayNhap.toLocalDateTime() : null,
+                        rs.getString("ghiChu")
+                ));
+            }
+        }
+        return list;
+    }
 }
