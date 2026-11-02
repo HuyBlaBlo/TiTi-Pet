@@ -350,29 +350,6 @@ public class LichHenDAO {
         }
         return ds;
     }
-    /** Danh sách dịch vụ Spa đang hoạt động để đổ vào combo dịch vụ. */
-    public List<DichVuSpa> layDanhSachDichVuSpa() throws SQLException {
-        String sql = """
-            SELECT maDichVu, tenDichVu, donGiaCoBan, thueSuat,
-                   giaDaBaoGomThue, loaiThuCungApDung, dangHoatDong
-            FROM dbo.DichVuSpa WHERE dangHoatDong = 1 ORDER BY tenDichVu
-            """;
-        List<DichVuSpa> ds = new ArrayList<>();
-        try (PreparedStatement ps = getActiveConnection().prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                String loai = rs.getString("loaiThuCungApDung");
-                LoaiThuCungApDung loaiEnum = null;
-                // Enum hiện tại của project chưa có CA_HAI; tránh làm hỏng lúc đọc dữ liệu.
-                try { loaiEnum = LoaiThuCungApDung.valueOf(loai); }
-                catch (IllegalArgumentException ignored) { /* bổ sung CA_HAI vào enum nếu cần */ }
-                ds.add(new DichVuSpa(rs.getString("maDichVu"), rs.getString("tenDichVu"),
-                        rs.getBigDecimal("donGiaCoBan"), rs.getBigDecimal("thueSuat"),
-                        rs.getBoolean("giaDaBaoGomThue"), loaiEnum, rs.getBoolean("dangHoatDong")));
-            }
-        }
-        return ds;
-    }
     
  // ========================= 5. HÀM HỖ TRỢ =========================
 
