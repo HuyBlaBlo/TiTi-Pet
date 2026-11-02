@@ -10,7 +10,6 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
@@ -165,39 +164,90 @@ public class SidebarPanel extends RoundedPannelLinear {
     }
 
     // hàm tải ảnh dùng cho sidebar và top bar
-    static ImageIcon taiIcon(String fileName, int size, Color tint) {
-        String resourcePath = "icons/sidebar/" + fileName;
-        try {
-            URL url = SidebarPanel.class.getResource("/" + resourcePath);
-            if (url == null) {
-                url = SidebarPanel.class.getResource("/resources/" + resourcePath);
-            }
-            Path path = Path.of("resources", resourcePath);
-            BufferedImage image = url != null ? ImageIO.read(url)
-                    : Files.isRegularFile(path) ? ImageIO.read(path.toFile()) : null;
-            if (image == null) {
-                System.err.println("Không tìm thấy icon: " + resourcePath);
-                return new ImageIcon(new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB));
-            }
-            BufferedImage result = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
-            Graphics2D g = result.createGraphics();
-            try {
-                g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-                double scale = Math.min(size / (double) image.getWidth(), size / (double) image.getHeight());
-                int width = (int) Math.round(image.getWidth() * scale);
-                int height = (int) Math.round(image.getHeight() * scale);
-                g.drawImage(image, (size - width) / 2, (size - height) / 2, width, height, null);
-                if (tint != null) {
-                    g.setComposite(AlphaComposite.SrcIn);
-                    g.setColor(tint);
-                    g.fillRect(0, 0, size, size);
-                }
-            } finally {
-                g.dispose();
-            }
-            return new ImageIcon(result);
-        } catch (IOException exception) {
-            throw new IllegalStateException("Không tải được icon: " + resourcePath, exception);
+static ImageIcon taiIcon(String fileName, int size, Color tint) {
+    String resourcePath = "icons/sidebar/" + fileName;
+
+    try {
+        // Đọc trực tiếp từ thư mục resources
+        Path path = Path.of("resources", resourcePath);
+
+        if (!Files.isRegularFile(path)) {
+            System.err.println("Không tìm thấy icon: " + path.toAbsolutePath());
+            return new ImageIcon(
+                    new BufferedImage(
+                            size, size,
+                            BufferedImage.TYPE_INT_ARGB
+                    )
+            );
         }
+
+        BufferedImage image = ImageIO.read(path.toFile());
+
+        if (image == null) {
+            throw new IOException("Không đọc được ảnh: " + path);
+        }
+
+        BufferedImage result = new BufferedImage(
+                size,
+                size,
+                BufferedImage.TYPE_INT_ARGB
+        );
+
+        Graphics2D g = result.createGraphics();
+
+        try {
+            g.setRenderingHint(
+                    RenderingHints.KEY_INTERPOLATION,
+                    RenderingHints.VALUE_INTERPOLATION_BICUBIC
+            );
+
+            g.setRenderingHint(
+                    RenderingHints.KEY_RENDERING,
+                    RenderingHints.VALUE_RENDER_QUALITY
+            );
+
+            g.setRenderingHint(
+                    RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON
+            );
+
+            double scale = Math.min(
+                    size / (double) image.getWidth(),
+                    size / (double) image.getHeight()
+            );
+
+            int width = (int) Math.round(image.getWidth() * scale);
+            int height = (int) Math.round(image.getHeight() * scale);
+
+            int x = (size - width) / 2;
+            int y = (size - height) / 2;
+
+            g.drawImage(
+                    image,
+                    x,
+                    y,
+                    width,
+                    height,
+                    null
+            );
+
+            if (tint != null) {
+                g.setComposite(AlphaComposite.SrcIn);
+                g.setColor(tint);
+                g.fillRect(0, 0, size, size);
+            }
+
+        } finally {
+            g.dispose();
+        }
+
+        return new ImageIcon(result);
+
+    } catch (IOException e) {
+        throw new IllegalStateException(
+                "Không tải được icon: " + resourcePath,
+                e
+        );
     }
+}
 }

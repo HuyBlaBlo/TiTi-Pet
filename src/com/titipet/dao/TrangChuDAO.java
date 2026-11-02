@@ -73,22 +73,22 @@ public class TrangChuDAO {
         kiemTraNgay(ngay);
         String sql = """
                 SELECT
-                    (SELECT COUNT(*) FROM ThuCung) AS tongThuCung,
-                    (SELECT COUNT(*) FROM LichHen
+                    (SELECT COUNT(*) FROM dbo.ThuCung) AS tongThuCung,
+                    (SELECT COUNT(*) FROM dbo.LichHen
                         WHERE thoiGianHen >= ? AND thoiGianHen < ? AND trangThai <> 'HUY') AS lichHen,
                     (SELECT COUNT(*) FROM dbo.LichHen
                         WHERE thoiGianHen >= ? AND thoiGianHen < ?
-                    AND trangThai = 'CHO_TIEP_NHAN') AS lichCho,
+                        AND trangThai = 'CHO_TIEP_NHAN') AS lichCho,
                     (SELECT COUNT(*) FROM dbo.HoaDon
                         WHERE ngayLap >= ? AND ngayLap < ?
-                        AND trangThai = 'DA_THANH_TOAN') as hoaDon,
-                    (SELECT SUM(tienPhaiThu,0) FROM HoaDon
+                        AND trangThai = 'DA_THANH_TOAN') AS hoaDon,
+                    (SELECT COALESCE(SUM(tienPhaiThu), 0) FROM dbo.HoaDon
                         WHERE ngayLap >= ? AND ngayLap < ?
-                        AND trangThai = 'DA_THANH_TOAN') as doanhThu
-                    (SELECT COUNT(*)  FROM ChiTietHoaDon_DichVu
+                        AND trangThai = 'DA_THANH_TOAN') AS doanhThu,
+                    (SELECT COUNT(*) FROM dbo.ChiTietHoaDon_DichVu
                         WHERE trangThaiThucHien = 'DANG_LAM') AS dichVuDangLam,
-                    (SELECT COUNT(*)  FROM ChiTietHoaDon_DichVu
-                        WHERE trangThaiThucHien = 'CHO_LAM') AS dichVuChoLam,
+                    (SELECT COUNT(*) FROM dbo.ChiTietHoaDon_DichVu
+                        WHERE trangThaiThucHien = 'CHO_LAM') AS dichVuChoLam
                 """;
         try (Connection con = moKetNoi();
              PreparedStatement ps = con.prepareStatement(sql)) {
