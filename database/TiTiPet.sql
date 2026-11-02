@@ -608,3 +608,29 @@ GO
 SELECT TOP 30 * FROM dbo.v_TonKhoSanPham ORDER BY tenSanPham;
 GO
 GO
+USE [TiTiPetDB];
+GO
+
+-- 1. Thêm cột giaNhap với giá trị mặc định là 0
+IF COL_LENGTH(N'dbo.SanPham', N'giaNhap') IS NULL
+BEGIN
+    ALTER TABLE dbo.SanPham
+    ADD giaNhap DECIMAL(18,2) NOT NULL CONSTRAINT DF_SanPham_GiaNhap DEFAULT (0);
+    
+    PRINT N'Đã thêm cột giaNhap thành công vào dbo.SanPham.';
+END
+ELSE
+BEGIN
+    PRINT N'Cột giaNhap đã tồn tại trong dbo.SanPham.';
+END
+GO
+
+-- 2. Thêm ràng buộc kiểm tra giaNhap >= 0
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_SanPham_GiaNhap')
+BEGIN
+    ALTER TABLE dbo.SanPham WITH CHECK
+    ADD CONSTRAINT CK_SanPham_GiaNhap CHECK (giaNhap >= 0);
+    
+    PRINT N'Đã thêm ràng buộc CK_SanPham_GiaNhap (giaNhap >= 0).';
+END
+GO
