@@ -608,3 +608,250 @@ GO
 SELECT TOP 30 * FROM dbo.v_TonKhoSanPham ORDER BY tenSanPham;
 GO
 GO
+USE [TiTiPetDB];
+GO
+
+-- 1. Thêm cột giaNhap với giá trị mặc định là 0
+IF COL_LENGTH(N'dbo.SanPham', N'giaNhap') IS NULL
+BEGIN
+    ALTER TABLE dbo.SanPham
+    ADD giaNhap DECIMAL(18,2) NOT NULL CONSTRAINT DF_SanPham_GiaNhap DEFAULT (0);
+    
+    PRINT N'Đã thêm cột giaNhap thành công vào dbo.SanPham.';
+END
+ELSE
+BEGIN
+    PRINT N'Cột giaNhap đã tồn tại trong dbo.SanPham.';
+END
+GO
+
+-- 2. Thêm ràng buộc kiểm tra giaNhap >= 0
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_SanPham_GiaNhap')
+BEGIN
+    ALTER TABLE dbo.SanPham WITH CHECK
+    ADD CONSTRAINT CK_SanPham_GiaNhap CHECK (giaNhap >= 0);
+    
+    PRINT N'Đã thêm ràng buộc CK_SanPham_GiaNhap (giaNhap >= 0).';
+END
+GO
+
+USE [TiTiPetDB];
+GO
+
+ALTER VIEW dbo.v_TonKhoSanPham
+AS
+SELECT sp.maSanPham, sp.tenSanPham, sp.loaiSanPham, sp.giaBan, sp.giaNhap,
+       sp.soLuongTonKho, sp.nguongCanhBaoTon,
+       CASE WHEN sp.loaiSanPham = 'THUC_AN' THEN ta.hanSuDung ELSE CAST(NULL AS DATE) END AS hanSuDung,
+       CASE WHEN sp.soLuongTonKho <= sp.nguongCanhBaoTon THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS canCanhBao,
+       CASE WHEN sp.loaiSanPham = 'THUC_AN' AND
+            (ta.maSanPham IS NULL OR ta.hanSuDung < CONVERT(date, GETDATE()))
+            THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS daHetHan
+FROM dbo.SanPham AS sp
+LEFT JOIN dbo.ThucAn AS ta ON ta.maSanPham = sp.maSanPham;
+GO
+
+USE [TiTiPetDB];
+GO
+
+-- 1. Cập nhật tự động: gán giá nhập bằng 70% giá bán cho tất cả sản phẩm đang có giá nhập = 0
+UPDATE dbo.SanPham
+SET giaNhap = ROUND(giaBan * 0.70, -3) -- Làm tròn đến hàng nghìn đồng
+WHERE giaNhap = 0 OR giaNhap IS NULL;
+GO
+
+-- 2. Hoặc cập nhật thủ công chi tiết theo từng mã sản phẩm thực tế:
+UPDATE dbo.SanPham SET giaNhap = 15000 WHERE maSanPham = 'SP001'; -- Ví dụ giá bán 23.000 -> giá nhập 15.000
+UPDATE dbo.SanPham SET giaNhap = 85000 WHERE maSanPham = 'SP002'; -- Ví dụ giá bán 122.000 -> giá nhập 85.000
+UPDATE dbo.SanPham SET giaNhap = 55000 WHERE maSanPham = 'SP003'; -- Ví dụ giá bán 85.000 -> giá nhập 55.000
+UPDATE dbo.SanPham SET giaNhap = 50000 WHERE maSanPham = 'SP004';
+UPDATE dbo.SanPham SET giaNhap = 40000 WHERE maSanPham = 'SP005';
+UPDATE dbo.SanPham SET giaNhap = 45000 WHERE maSanPham = 'SP006';
+UPDATE dbo.SanPham SET giaNhap = 5000  WHERE maSanPham = 'SP007';
+UPDATE dbo.SanPham SET giaNhap = 90000 WHERE maSanPham = 'SP008';
+GO
+
+-- 3. Kiểm tra lại kết quả cập nhật
+SELECT 
+    sp.maSanPham, 
+    sp.tenSanPham, 
+    sp.loaiSanPham,
+    sp.giaNhap, 
+    sp.giaBan, 
+    sp.soLuongTonKho,
+    ta.hanSuDung
+FROM dbo.SanPham sp
+LEFT JOIN dbo.ThucAn ta ON sp.maSanPham = ta.maSanPham
+ORDER BY sp.maSanPham ASC;
+GO
+
+USE [TiTiPetDB];
+GO
+
+IF OBJECT_ID(N'dbo.LichSuNhapKho', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.LichSuNhapKho (
+        maLichSu        BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        maSanPham       VARCHAR(20)          NOT NULL,
+        soLuongNhap     INT                  NOT NULL,
+        giaNhap         DECIMAL(18,2)        NOT NULL,
+        hanSuDungMoi    DATE                 NULL,
+        ngayNhap        DATETIME2(0)         NOT NULL CONSTRAINT DF_LSNK_NgayNhap DEFAULT (SYSDATETIME()),
+        ghiChu          NVARCHAR(500)        NULL,
+        CONSTRAINT FK_LSNK_SanPham FOREIGN KEY (maSanPham) REFERENCES dbo.SanPham(maSanPham)
+    );
+    PRINT N'Đã tạo bảng LichSuNhapKho thành công.';
+END;
+GO
+
+SELECT * FROM dbo.SanPham
+
+USE [TiTiPetDB];
+GO
+
+BEGIN TRANSACTION;
+BEGIN TRY
+    -- 1. DROP CÁC KHÓA NGOẠI TRỎ TỚI dbo.SanPham THEO ĐÚNG TÊN TRONG SCHEMA
+    IF OBJECT_ID(N'dbo.FK_ThucAn_SanPham', N'F') IS NOT NULL
+        ALTER TABLE dbo.ThucAn DROP CONSTRAINT FK_ThucAn_SanPham;
+
+    IF OBJECT_ID(N'dbo.FK_PhuKien_SanPham', N'F') IS NOT NULL
+        ALTER TABLE dbo.PhuKien DROP CONSTRAINT FK_PhuKien_SanPham;
+
+    IF OBJECT_ID(N'dbo.FK_CTSP_SanPham', N'F') IS NOT NULL
+        ALTER TABLE dbo.ChiTietHoaDon_SanPham DROP CONSTRAINT FK_CTSP_SanPham;
+
+    IF OBJECT_ID(N'dbo.FK_KhuyenMai_SanPhamApDung', N'F') IS NOT NULL
+        ALTER TABLE dbo.KhuyenMai DROP CONSTRAINT FK_KhuyenMai_SanPhamApDung;
+
+    IF OBJECT_ID(N'dbo.FK_DoiTra_SP_Cu', N'F') IS NOT NULL
+        ALTER TABLE dbo.DoiTra DROP CONSTRAINT FK_DoiTra_SP_Cu;
+
+    IF OBJECT_ID(N'dbo.FK_DoiTra_SP_Moi', N'F') IS NOT NULL
+        ALTER TABLE dbo.DoiTra DROP CONSTRAINT FK_DoiTra_SP_Moi;
+
+    IF OBJECT_ID(N'dbo.FK_LSNK_SanPham', N'F') IS NOT NULL
+        ALTER TABLE dbo.LichSuNhapKho DROP CONSTRAINT FK_LSNK_SanPham;
+
+    -- 2. CẬP NHẬT MÃ TRÊN BẢNG CHÍNH dbo.SanPham
+    UPDATE dbo.SanPham SET maSanPham = 'TA001' WHERE maSanPham IN ('SP_TEST_TA01', 'SP001');
+    UPDATE dbo.SanPham SET maSanPham = 'TA002' WHERE maSanPham IN ('SP_TEST_TA02', 'SP002');
+    UPDATE dbo.SanPham SET maSanPham = 'TA003' WHERE maSanPham IN ('SP_TEST_TA03', 'SP003');
+
+    UPDATE dbo.SanPham SET maSanPham = 'PK001' WHERE maSanPham IN ('SP_TEST_PK01', 'SP004');
+    UPDATE dbo.SanPham SET maSanPham = 'PK002' WHERE maSanPham IN ('SP_TEST_PK02', 'SP005');
+    UPDATE dbo.SanPham SET maSanPham = 'PK003' WHERE maSanPham IN ('SP_TEST_OFF', 'SP006');
+
+    -- 3. CẬP NHẬT ĐỒNG BỘ TRÊN BẢNG CON dbo.ThucAn
+    IF OBJECT_ID(N'dbo.ThucAn', N'U') IS NOT NULL
+    BEGIN
+        UPDATE dbo.ThucAn SET maSanPham = 'TA001' WHERE maSanPham IN ('SP_TEST_TA01', 'SP001');
+        UPDATE dbo.ThucAn SET maSanPham = 'TA002' WHERE maSanPham IN ('SP_TEST_TA02', 'SP002');
+        UPDATE dbo.ThucAn SET maSanPham = 'TA003' WHERE maSanPham IN ('SP_TEST_TA03', 'SP003');
+    END
+
+    -- 4. CẬP NHẬT ĐỒNG BỘ TRÊN BẢNG CON dbo.PhuKien
+    IF OBJECT_ID(N'dbo.PhuKien', N'U') IS NOT NULL
+    BEGIN
+        UPDATE dbo.PhuKien SET maSanPham = 'PK001' WHERE maSanPham IN ('SP_TEST_PK01', 'SP004');
+        UPDATE dbo.PhuKien SET maSanPham = 'PK002' WHERE maSanPham IN ('SP_TEST_PK02', 'SP005');
+        UPDATE dbo.PhuKien SET maSanPham = 'PK003' WHERE maSanPham IN ('SP_TEST_OFF', 'SP006');
+    END
+
+    -- 5. CẬP NHẬT ĐỒNG BỘ TRÊN dbo.ChiTietHoaDon_SanPham
+    IF OBJECT_ID(N'dbo.ChiTietHoaDon_SanPham', N'U') IS NOT NULL
+    BEGIN
+        UPDATE dbo.ChiTietHoaDon_SanPham SET maSanPham = 'TA001' WHERE maSanPham IN ('SP_TEST_TA01', 'SP001');
+        UPDATE dbo.ChiTietHoaDon_SanPham SET maSanPham = 'TA002' WHERE maSanPham IN ('SP_TEST_TA02', 'SP002');
+        UPDATE dbo.ChiTietHoaDon_SanPham SET maSanPham = 'TA003' WHERE maSanPham IN ('SP_TEST_TA03', 'SP003');
+        UPDATE dbo.ChiTietHoaDon_SanPham SET maSanPham = 'PK001' WHERE maSanPham IN ('SP_TEST_PK01', 'SP004');
+        UPDATE dbo.ChiTietHoaDon_SanPham SET maSanPham = 'PK002' WHERE maSanPham IN ('SP_TEST_PK02', 'SP005');
+        UPDATE dbo.ChiTietHoaDon_SanPham SET maSanPham = 'PK003' WHERE maSanPham IN ('SP_TEST_OFF', 'SP006');
+    END
+
+    -- 6. CẬP NHẬT ĐỒNG BỘ TRÊN dbo.KhuyenMai (NẾU CÓ ÁP DỤNG SP)
+    IF OBJECT_ID(N'dbo.KhuyenMai', N'U') IS NOT NULL
+    BEGIN
+        UPDATE dbo.KhuyenMai SET maSanPhamApDung = 'TA001' WHERE maSanPhamApDung IN ('SP_TEST_TA01', 'SP001');
+        UPDATE dbo.KhuyenMai SET maSanPhamApDung = 'TA002' WHERE maSanPhamApDung IN ('SP_TEST_TA02', 'SP002');
+        UPDATE dbo.KhuyenMai SET maSanPhamApDung = 'TA003' WHERE maSanPhamApDung IN ('SP_TEST_TA03', 'SP003');
+        UPDATE dbo.KhuyenMai SET maSanPhamApDung = 'PK001' WHERE maSanPhamApDung IN ('SP_TEST_PK01', 'SP004');
+        UPDATE dbo.KhuyenMai SET maSanPhamApDung = 'PK002' WHERE maSanPhamApDung IN ('SP_TEST_PK02', 'SP005');
+        UPDATE dbo.KhuyenMai SET maSanPhamApDung = 'PK003' WHERE maSanPhamApDung IN ('SP_TEST_OFF', 'SP006');
+    END
+
+    -- 7. CẬP NHẬT ĐỒNG BỘ TRÊN dbo.DoiTra (NẾU CÓ DỮ LIỆU ĐỔI TRẢ)
+    IF OBJECT_ID(N'dbo.DoiTra', N'U') IS NOT NULL
+    BEGIN
+        UPDATE dbo.DoiTra SET maSanPhamCu = 'TA001' WHERE maSanPhamCu IN ('SP_TEST_TA01', 'SP001');
+        UPDATE dbo.DoiTra SET maSanPhamMoi = 'TA001' WHERE maSanPhamMoi IN ('SP_TEST_TA01', 'SP001');
+        UPDATE dbo.DoiTra SET maSanPhamCu = 'PK001' WHERE maSanPhamCu IN ('SP_TEST_PK01', 'SP004');
+        UPDATE dbo.DoiTra SET maSanPhamMoi = 'PK001' WHERE maSanPhamMoi IN ('SP_TEST_PK01', 'SP004');
+    END
+
+    -- 8. CẬP NHẬT ĐỒNG BỘ TRÊN dbo.LichSuNhapKho (NẾU CÓ)
+    IF OBJECT_ID(N'dbo.LichSuNhapKho', N'U') IS NOT NULL
+    BEGIN
+        UPDATE dbo.LichSuNhapKho SET maSanPham = 'TA001' WHERE maSanPham IN ('SP_TEST_TA01', 'SP001');
+        UPDATE dbo.LichSuNhapKho SET maSanPham = 'TA002' WHERE maSanPham IN ('SP_TEST_TA02', 'SP002');
+        UPDATE dbo.LichSuNhapKho SET maSanPham = 'TA003' WHERE maSanPham IN ('SP_TEST_TA03', 'SP003');
+        UPDATE dbo.LichSuNhapKho SET maSanPham = 'PK001' WHERE maSanPham IN ('SP_TEST_PK01', 'SP004');
+        UPDATE dbo.LichSuNhapKho SET maSanPham = 'PK002' WHERE maSanPham IN ('SP_TEST_PK02', 'SP005');
+        UPDATE dbo.LichSuNhapKho SET maSanPham = 'PK003' WHERE maSanPham IN ('SP_TEST_OFF', 'SP006');
+    END
+
+    -- 9. TẠO LẠI CÁC RÀNG BUỘC KÈM CASCADE
+    ALTER TABLE dbo.ThucAn WITH CHECK 
+        ADD CONSTRAINT FK_ThucAn_SanPham FOREIGN KEY (maSanPham) 
+        REFERENCES dbo.SanPham (maSanPham) ON UPDATE CASCADE ON DELETE CASCADE;
+
+    ALTER TABLE dbo.PhuKien WITH CHECK 
+        ADD CONSTRAINT FK_PhuKien_SanPham FOREIGN KEY (maSanPham) 
+        REFERENCES dbo.SanPham (maSanPham) ON UPDATE CASCADE ON DELETE CASCADE;
+
+    IF OBJECT_ID(N'dbo.ChiTietHoaDon_SanPham', N'U') IS NOT NULL
+        ALTER TABLE dbo.ChiTietHoaDon_SanPham WITH CHECK 
+            ADD CONSTRAINT FK_CTSP_SanPham FOREIGN KEY (maSanPham) 
+            REFERENCES dbo.SanPham (maSanPham) ON UPDATE CASCADE;
+
+    IF OBJECT_ID(N'dbo.KhuyenMai', N'U') IS NOT NULL
+        ALTER TABLE dbo.KhuyenMai WITH CHECK 
+            ADD CONSTRAINT FK_KhuyenMai_SanPhamApDung FOREIGN KEY (maSanPhamApDung) 
+            REFERENCES dbo.SanPham (maSanPham) ON UPDATE CASCADE;
+
+    IF OBJECT_ID(N'dbo.DoiTra', N'U') IS NOT NULL
+    BEGIN
+        ALTER TABLE dbo.DoiTra WITH CHECK 
+            ADD CONSTRAINT FK_DoiTra_SP_Cu FOREIGN KEY (maSanPhamCu) 
+            REFERENCES dbo.SanPham (maSanPham);
+
+        ALTER TABLE dbo.DoiTra WITH CHECK 
+            ADD CONSTRAINT FK_DoiTra_SP_Moi FOREIGN KEY (maSanPhamMoi) 
+            REFERENCES dbo.SanPham (maSanPham);
+    END
+
+    IF OBJECT_ID(N'dbo.LichSuNhapKho', N'U') IS NOT NULL
+        ALTER TABLE dbo.LichSuNhapKho WITH CHECK 
+            ADD CONSTRAINT FK_LSNK_SanPham FOREIGN KEY (maSanPham) 
+            REFERENCES dbo.SanPham (maSanPham) ON UPDATE CASCADE;
+
+    COMMIT TRANSACTION;
+    PRINT N'==> CHUYỂN ĐỔI MÃ SẢN PHẨM SANG TAxxx & PKxxx THÀNH CÔNG!';
+END TRY
+BEGIN CATCH
+    ROLLBACK TRANSACTION;
+    PRINT N'Lỗi thực thi: ' + ERROR_MESSAGE();
+END CATCH
+GO
+
+USE [TiTiPetDB];
+GO
+
+-- 1. Kiểm tra và hủy tất cả các transaction đang mở dở dang
+WHILE @@TRANCOUNT > 0
+BEGIN
+    ROLLBACK TRANSACTION;
+END;
+
+PRINT N'==> ĐÃ HỦY VÀ GIẢI PHÓNG TOÀN BỘ KHÓA TREO THÀNH CÔNG!';
+
