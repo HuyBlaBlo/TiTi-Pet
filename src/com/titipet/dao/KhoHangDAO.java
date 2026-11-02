@@ -101,7 +101,7 @@ public class KhoHangDAO {
         return danhSach;
     }
 
-    public boolean nhapKhoSanPham(String maSP, int soLuongNhapThem, LocalDate hsdMoi) throws SQLException {
+    public boolean nhapKhoSanPham(String maSP, int soLuongNhapThem, BigDecimal giaNhapMoi, LocalDate hsdMoi) throws SQLException {
         Connection con = ConnectDB.getInstance().getConnection();
         if (con == null || con.isClosed()) {
             ConnectDB.getInstance().connect();
@@ -112,13 +112,16 @@ public class KhoHangDAO {
         try {
             con.setAutoCommit(false);
 
-            String sqlSP = "UPDATE dbo.SanPham SET soLuongTonKho = soLuongTonKho + ? WHERE maSanPham = ?";
+            // 1. Tăng số lượng tồn kho và cập nhật đơn giá nhập mới nhất
+            String sqlSP = "UPDATE dbo.SanPham SET soLuongTonKho = soLuongTonKho + ?, giaNhap = ? WHERE maSanPham = ?";
             try (PreparedStatement psSP = con.prepareStatement(sqlSP)) {
                 psSP.setInt(1, soLuongNhapThem);
-                psSP.setString(2, maSP);
+                psSP.setBigDecimal(2, giaNhapMoi != null ? giaNhapMoi : BigDecimal.ZERO);
+                psSP.setString(3, maSP);
                 psSP.executeUpdate();
             }
 
+            // 2. Nếu có HSD mới và sản phẩm là Thức ăn thì cập nhật bảng ThucAn
             if (hsdMoi != null) {
                 String sqlTA = "UPDATE dbo.ThucAn SET hanSuDung = ? WHERE maSanPham = ?";
                 try (PreparedStatement psTA = con.prepareStatement(sqlTA)) {
