@@ -3,6 +3,7 @@ package com.titipet.entity;
 import com.titipet.entity.enums.LoaiSanPham;
 
 import java.math.BigDecimal;
+import java.util.Objects;
 
 public abstract class SanPham {
     private String maSanPham;
@@ -105,5 +106,27 @@ public abstract class SanPham {
     // Kiểm tra số lượng tồn kho có đủ để bán không
     public boolean kiemTraTonKho(int soLuongYC) {
         return soLuongYC > 0 && soLuongTonKho >= soLuongYC;
+    }
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(maSanPham);
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		SanPham other = (SanPham) obj;
+		return Objects.equals(maSanPham, other.maSanPham);
+	}
+    
+	@Override
+    public String toString() {
+        return tenSanPham + " (Tồn: " + soLuongTonKho + ")";
     }
 }
