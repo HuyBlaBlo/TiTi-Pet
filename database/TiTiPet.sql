@@ -634,3 +634,19 @@ BEGIN
     PRINT N'Đã thêm ràng buộc CK_SanPham_GiaNhap (giaNhap >= 0).';
 END
 GO
+
+USE [TiTiPetDB];
+GO
+
+ALTER VIEW dbo.v_TonKhoSanPham
+AS
+SELECT sp.maSanPham, sp.tenSanPham, sp.loaiSanPham, sp.giaBan, sp.giaNhap,
+       sp.soLuongTonKho, sp.nguongCanhBaoTon,
+       CASE WHEN sp.loaiSanPham = 'THUC_AN' THEN ta.hanSuDung ELSE CAST(NULL AS DATE) END AS hanSuDung,
+       CASE WHEN sp.soLuongTonKho <= sp.nguongCanhBaoTon THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS canCanhBao,
+       CASE WHEN sp.loaiSanPham = 'THUC_AN' AND
+            (ta.maSanPham IS NULL OR ta.hanSuDung < CONVERT(date, GETDATE()))
+            THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS daHetHan
+FROM dbo.SanPham AS sp
+LEFT JOIN dbo.ThucAn AS ta ON ta.maSanPham = sp.maSanPham;
+GO
