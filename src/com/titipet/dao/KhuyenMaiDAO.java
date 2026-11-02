@@ -9,10 +9,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * KhuyenMaiDAO: Xử lý truy vấn dữ liệu từ bảng KhuyenMai trong CSDL TiTiPet.
- * Ánh xạ chuẩn xác cột: maKhuyenMai, tenChuongTrinh, ngayBatDau, ngayKetThuc, giamTram, trangThai, phamVi.
- */
 public class KhuyenMaiDAO {
 
     private Connection getActiveConnection() throws SQLException {
@@ -95,7 +91,7 @@ public class KhuyenMaiDAO {
     }
 
     /**
-     * Tự động sinh mã mới dạng KMxxx (hoặc KM_TEST_xxx nếu có)[cite: 12]
+     * Tự động sinh mã mới dạng KMxxx (hoặc KM_TEST_xxx nếu có)
      */
     public String sinhMaKhuyenMaiMoi() throws SQLException {
         String sql = "SELECT TOP 1 maKhuyenMai FROM dbo.KhuyenMai WHERE maKhuyenMai LIKE 'KM%' ORDER BY maKhuyenMai DESC";
@@ -104,7 +100,7 @@ public class KhuyenMaiDAO {
             if (rs.next()) {
                 String maMax = rs.getString(1);
                 try {
-                    // Xử lý cả dạng KM001 lẫn KM_TEST_xxx[cite: 12]
+                    // Xử lý cả dạng KM001 lẫn KM_TEST_xxx
                     String so = maMax.replaceAll("\\D+", "");
                     if (!so.isEmpty()) {
                         int stt = Integer.parseInt(so);
@@ -118,19 +114,19 @@ public class KhuyenMaiDAO {
 
     private KhuyenMai mapResultSet(ResultSet rs) throws SQLException {
         KhuyenMai km = new KhuyenMai();
-        km.setMaKhuyenMai(rs.getString("maKhuyenMai")); //[cite: 12]
-        km.setTenChuongTrinh(rs.getString("tenChuongTrinh")); //[cite: 12]
+        km.setMaKhuyenMai(rs.getString("maKhuyenMai")); 
+        km.setTenChuongTrinh(rs.getString("tenChuongTrinh")); 
 
-        Timestamp tsBD = rs.getTimestamp("ngayBatDau"); //[cite: 12]
+        Timestamp tsBD = rs.getTimestamp("ngayBatDau");
         if (tsBD != null) km.setNgayBatDau(tsBD.toLocalDateTime());
 
-        Timestamp tsKT = rs.getTimestamp("ngayKetThuc"); //[cite: 12]
+        Timestamp tsKT = rs.getTimestamp("ngayKetThuc");
         if (tsKT != null) km.setNgayKetThuc(tsKT.toLocalDateTime());
 
-        km.setGiamTram(rs.getBigDecimal("giamTram")); // Khớp tên cột CSDL[cite: 12]
-        km.setTrangThai(rs.getBoolean("trangThai")); //[cite: 12]
+        km.setGiamTram(rs.getBigDecimal("giamTram")); 
+        km.setTrangThai(rs.getBoolean("trangThai"));
 
-        String strPhamVi = rs.getString("phamVi"); //[cite: 12]
+        String strPhamVi = rs.getString("phamVi");
         if (strPhamVi != null) {
             try {
                 km.setPhamVi(PhamVi.valueOf(strPhamVi.trim()));
