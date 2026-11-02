@@ -5,6 +5,8 @@ import com.titipet.entity.NhanVien;
 import com.titipet.entity.enums.VaiTro;
 import com.titipet.util.PasswordUtil;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.sql.SQLException;
 import java.util.Objects;
 import java.util.Optional;
@@ -22,12 +24,9 @@ public class AuthService {
     }
 
     /**
-     * Xác thực thông tin đăng nhập.
-     * Thành công: trả về NhanVien.
-     * Thất bại: ném IllegalArgumentException.
+     * Kiểm tra thông tin đăng nhập và trả về nhân viên đăng nhập thành công.
      */
     public NhanVien dangNhap(String tenDangNhap, String matKhau){
-        nhanVienDangNhap = null;
         validateInput(tenDangNhap,matKhau);
         NhanVien nhanVien;
         try{
@@ -35,11 +34,10 @@ public class AuthService {
                     .timTheoTenDangNhap(tenDangNhap.trim())
                     .orElseThrow(AuthService::thongTinDangNhapKhongDung);
         } catch (SQLException e) {
-            throw new RuntimeException(
-                    "Không thể kiểm tra thông tin đăng nhập. Vui lòng kiểm tra kết nối CSDL.", e);
+            throw new RuntimeException("Không thể kiểm tra thông tin đăng nhập, vui lòng kiểm tra lại kết nối với db");
         }
         //Kiem tra mat khau
-        if(!PasswordUtil.kiemTraMatKhau(matKhau,nhanVien.getMatKhau())){
+        if(PasswordUtil.kiemTraMatKhau(matKhau,nhanVien.getMatKhau())){
             throw thongTinDangNhapKhongDung();
         }
 
@@ -49,7 +47,6 @@ public class AuthService {
         return nhanVienDangNhap;
     }
 
-    //
     private void validateInput(String tenDangNhap, String matKhau) {
         if(null == tenDangNhap || tenDangNhap.isBlank()){
             throw new IllegalArgumentException("Vui lòng nhập tên đăng nhập");
@@ -79,6 +76,18 @@ public class AuthService {
                 && nhanVienDangNhap.getVaiTro() == vaiTro;
     }
 
+    /**
+    private boolean matKhauKhop(String matKhauNhap, String matKhauDaLuu) {
+        if (matKhauDaLuu == null) {
+            return false;
+        }
+
+        return MessageDigest.isEqual(
+                matKhauNhap.getBytes(StandardCharsets.UTF_8),
+                matKhauDaLuu.getBytes(StandardCharsets.UTF_8)
+        );
+    }
+*/
     private static IllegalArgumentException thongTinDangNhapKhongDung(){
         return new IllegalArgumentException("Tên đăng nhập hoặc mật khẩu không đúng");
     }
