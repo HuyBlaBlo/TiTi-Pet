@@ -1,10 +1,12 @@
 package com.titipet.dao;
 
 import com.titipet.connectDB.ConnectDB;
+import com.titipet.entity.DichVuSpa;
 import com.titipet.entity.PhuKien;
 import com.titipet.entity.SanPham;
 import com.titipet.entity.ThucAn;
 import com.titipet.entity.enums.LoaiSanPham;
+import com.titipet.entity.enums.LoaiThuCungApDung;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -17,33 +19,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SanPhamDAO {
-
-    public static class DichVuSpaItem {
-        private String maDV;
-        private String tenDV;
-        private String loaiThuCung;
-        private BigDecimal donGiaCoBan;
-        private int thoiGianPhut;
-        private String cachTinh;
-
-        public DichVuSpaItem(String maDV, String tenDV, String loaiThuCung, BigDecimal donGiaCoBan, int thoiGianPhut, String cachTinh) {
-            this.maDV = maDV;
-            this.tenDV = tenDV;
-            this.loaiThuCung = loaiThuCung;
-            this.donGiaCoBan = donGiaCoBan;
-            this.thoiGianPhut = thoiGianPhut;
-            this.cachTinh = cachTinh;
-        }
-
-        public String getMaDV() { return maDV; }
-        public String getTenDV() { return tenDV; }
-        public String getLoaiThuCung() { return loaiThuCung; }
-        public BigDecimal getDonGiaCoBan() { return donGiaCoBan; }
-        public int getThoiGianPhut() { return thoiGianPhut; }
-        public String getCachTinh() { return cachTinh; }
-    }
-
-    public List<SanPham> layDanhSachSanPham() throws SQLException {
+	/**
+     * Lấy danh sách toàn bộ sản phẩm đang kinh doanh kèm thông tin bảng con
+     */
+	public List<SanPham> layDanhSachSanPham() throws SQLException {
         List<SanPham> list = new ArrayList<>();
         String sql = "SELECT sp.maSanPham, sp.tenSanPham, sp.giaBan, sp.giaNhap, sp.soLuongTonKho, "
                    + "       sp.maVach, sp.nguongCanhBaoTon, sp.thueSuat, sp.loaiSanPham, "
@@ -113,9 +92,12 @@ public class SanPhamDAO {
         return list;
     }
 
-    public List<DichVuSpaItem> layDanhSachDichVuSpa() throws SQLException {
-        List<DichVuSpaItem> list = new ArrayList<>();
-        String sql = "SELECT maDichVu, tenDichVu, loaiThuCungApDung, donGiaCoBan "
+    /**
+     * Lấy danh sách Dịch vụ Spa trực tiếp qua Entity DichVuSpa
+     */
+    public List<DichVuSpa> layDanhSachDichVuSpa() throws SQLException {
+        List<DichVuSpa> list = new ArrayList<>();
+        String sql = "SELECT maDichVu, tenDichVu, donGiaCoBan, thueSuat, giaDaBaoGomThue, loaiThuCungApDung, dangHoatDong "
                    + "FROM dbo.DichVuSpa "
                    + "WHERE dangHoatDong = 1 "
                    + "ORDER BY maDichVu ASC";
@@ -129,25 +111,38 @@ public class SanPhamDAO {
         try (PreparedStatement ps = con.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                String ma = rs.getString("maDichVu");
-                String ten = rs.getString("tenDichVu");
-                String loai = rs.getString("loaiThuCungApDung");
-                BigDecimal gia = rs.getBigDecimal("donGiaCoBan");
+                DichVuSpa dv = new DichVuSpa();
+                dv.setMaDichVu(rs.getString("maDichVu"));
+                dv.setTenDichVu(rs.getString("tenDichVu"));
+                dv.setDonGiaCoBan(rs.getBigDecimal("donGiaCoBan"));
+                dv.setThueSuat(rs.getBigDecimal("thueSuat"));
+                dv.setGiaDaBaoGomThue(rs.getBoolean("giaDaBaoGomThue"));
+                dv.setDangHoatDong(rs.getBoolean("dangHoatDong"));
 
+                String loaiStr = rs.getString("loaiThuCungApDung");
+                try {
+                    dv.setLoaiThuCungApDung(LoaiThuCungApDung.valueOf(loaiStr));
+                } catch (Exception e) {
+                    dv.setLoaiThuCungApDung(LoaiThuCungApDung.CA_HAI);
+                }
+
+                // Gán thời lượng mặc định hiển thị theo tên dịch vụ
                 int thoiGian = 60;
-                if (ten.toLowerCase().contains("cắt móng")) thoiGian = 30;
-                else if (ten.toLowerCase().contains("cắt tỉa lông")) thoiGian = 45;
-                else if (ten.toLowerCase().contains("tắm")) thoiGian = 60;
+                String tenLower = dv.getTenDichVu().toLowerCase();
+                if (tenLower.contains("cắt móng")) thoiGian = 30;
+                else if (tenLower.contains("cắt tỉa")) thoiGian = 45;
+                else if (tenLower.contains("tắm sấy")) thoiGian = 90;
+                dv.setThoiLuongPhut(thoiGian);
 
-                String loaiHienThi = ("CA_HAI".equalsIgnoreCase(loai) || loai == null) ? "Tất cả" : loai;
-                String cachTinh = "+50.000đ (5-10kg), +100.000đ (>10kg)";
-
-                list.add(new DichVuSpaItem(ma, ten, loaiHienThi, gia, thoiGian, cachTinh));
+                list.add(dv);
             }
         }
         return list;
     }
 
+    /**
+     * Tự động sinh mã sản phẩm tiếp theo: TAxxx cho Thức ăn, PKxxx cho Phụ kiện
+     */
     public String taoMaSanPhamMoi(LoaiSanPham loai) throws SQLException {
         String prefix = (loai == LoaiSanPham.THUC_AN) ? "TA" : "PK";
         String regex = "^" + prefix + "\\d+$";
@@ -179,6 +174,9 @@ public class SanPhamDAO {
         return String.format("%s%03d", prefix, maxIndex + 1);
     }
 
+    /**
+     * Thêm mới sản phẩm vào CSDL kèm bảng con
+     */
     public boolean themSanPham(SanPham sp, LocalDateTime hanSuDung) throws SQLException {
         Connection con = ConnectDB.getInstance().getConnection();
         if (con == null || con.isClosed()) {
@@ -230,6 +228,9 @@ public class SanPhamDAO {
         }
     }
 
+    /**
+     * Cập nhật thông tin sản phẩm
+     */
     public boolean capNhatSanPham(SanPham sp, LocalDateTime hanSuDungMoi) throws SQLException {
         Connection con = ConnectDB.getInstance().getConnection();
         if (con == null || con.isClosed()) {
@@ -271,20 +272,15 @@ public class SanPhamDAO {
 
     public static void main(String[] args) {
         try {
-            System.out.println("=== TEST SanPhamDAO (SCHEMA CHÍNH THỨC) ===");
+            System.out.println("=== TEST SanPhamDAO (DUNG DichVuSpa ENTITY) ===");
             ConnectDB.getInstance().connect();
             SanPhamDAO dao = new SanPhamDAO();
 
-            String maTA = dao.taoMaSanPhamMoi(LoaiSanPham.THUC_AN);
-            String maPK = dao.taoMaSanPhamMoi(LoaiSanPham.PHU_KIEN);
-            System.out.println("Mã Thức ăn tiếp theo : " + maTA);
-            System.out.println("Mã Phụ kiện tiếp theo: " + maPK);
-
-            List<SanPham> ds = dao.layDanhSachSanPham();
-            System.out.println("Danh sách sản phẩm hiện có: " + ds.size());
-            for (SanPham sp : ds) {
-                System.out.printf("  [%-5s] %-25s | Giá bán: %-10s | Tồn: %d\n",
-                        sp.getMaSanPham(), sp.getTenSanPham(), sp.getGiaBan(), sp.getSoLuongTonKho());
+            List<DichVuSpa> dsSpa = dao.layDanhSachDichVuSpa();
+            System.out.println("Tổng số dịch vụ Spa: " + dsSpa.size());
+            for (DichVuSpa dv : dsSpa) {
+                System.out.printf("  [%s] %-25s | Đơn giá: %-10s | Áp dụng: %s | Thời lượng: %d phút\n",
+                        dv.getMaDichVu(), dv.getTenDichVu(), dv.getDonGiaCoBan(), dv.getLoaiThuCungApDung(), dv.getThoiLuongPhut());
             }
 
             System.out.println("=== TEST THÀNH CÔNG ===");
@@ -292,4 +288,5 @@ public class SanPhamDAO {
             ex.printStackTrace();
         }
     }
+
 }
