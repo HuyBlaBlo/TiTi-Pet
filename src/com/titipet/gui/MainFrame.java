@@ -10,6 +10,8 @@ import com.titipet.gui.panel.ChotCaPanel;
 import com.titipet.gui.panel.DoiTraPanel;
 import com.titipet.gui.panel.KhachHangPanel;
 import com.titipet.gui.panel.LichHenPanel;
+import com.titipet.gui.panel.ThuCungPanel;
+import com.titipet.gui.panel.TrangChuPanel;
 
 import javax.swing.*;
 import java.awt.*;
@@ -68,11 +70,18 @@ public class MainFrame extends JFrame {
         String maNV = nhanVien == null ? null : nhanVien.getMaNV();
         VaiTro vaiTro = nhanVien == null ? null : nhanVien.getVaiTro();
 
+        dangKyTrangChu(maNV, nhanVien == null ? "TiTi Pet" : nhanVien.getHoTen());
         dangKyChotCa(maNV, vaiTro);
         dangKyLichHen();
         dangKyBanHang(maNV);
         dangKyDoiTra(maNV);
         dangKyKhachHang();
+        dangKyThuCung(nhanVien);
+    }
+
+    /** Trang chủ nhận mã nhân viên để hiện trạng thái ca và callback để mở menu. */
+    private void dangKyTrangChu(String maNV, String tenNhanVien) {
+        dangKyPanel(TRANG_CHU, new TrangChuPanel(maNV, tenNhanVien, this::hienThiManHinh));
     }
 
     /** Mở/chốt ca cần mã nhân viên và vai trò để hiện đúng chức năng. */
@@ -100,6 +109,11 @@ public class MainFrame extends JFrame {
     /** Khách hàng & VIP dùng AuthService để kiểm tra quyền trên màn hình. */
     private void dangKyKhachHang() {
         dangKyPanel(KHACH_HANG, new KhachHangPanel(authService));
+    }
+
+    /** Mục Hồ sơ thú cưng nhận nhân viên đăng nhập để kiểm tra quyền thao tác. */
+    private void dangKyThuCung(NhanVien nhanVien) {
+        dangKyPanel(THU_CUNG, new ThuCungPanel(nhanVien));
     }
 
     private void taoGiaoDien() {
@@ -168,6 +182,9 @@ public class MainFrame extends JFrame {
         sidebar.chonManHinh(maManHinh);
         topBar.setTieuDe(sidebar.layTieuDe(maManHinh));
         cardLayout.show(contentPanel, panels.containsKey(maManHinh) ? maManHinh : PANEL_TRONG);
+        if (TRANG_CHU.equals(maManHinh)) {
+            ((TrangChuPanel) panels.get(TRANG_CHU)).taiDuLieu();
+        }
     }
 
     private void kiemTraMaManHinh(String maManHinh) {
