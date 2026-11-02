@@ -11,6 +11,7 @@ public class DichVuSpa {
     private BigDecimal thueSuat;
     private boolean giaDaBaoGomThue;
     private LoaiThuCungApDung loaiThuCungApDung;
+    private int thoiLuongPhut;
     private boolean dangHoatDong;
 
     public DichVuSpa() {
@@ -73,8 +74,16 @@ public class DichVuSpa {
     public void setLoaiThuCungApDung(LoaiThuCungApDung loaiThuCungApDung) {
         this.loaiThuCungApDung = loaiThuCungApDung;
     }
+    
+    public int getThoiLuongPhut() {
+		return thoiLuongPhut;
+	}
 
-    public boolean isDangHoatDong() {
+	public void setThoiLuongPhut(int thoiLuongPhut) {
+		this.thoiLuongPhut = thoiLuongPhut;
+	}
+
+	public boolean isDangHoatDong() {
         return dangHoatDong;
     }
 
