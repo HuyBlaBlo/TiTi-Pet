@@ -15,79 +15,83 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * ĐỌc dữ liệu cho TrangChuService xử  lí
- */
+/** Đọc dữ liệu từ SQL Server cho màn hình Trang chủ */
 public class TrangChuDAO {
 
-    public record CaHienTai(String maCa, String trangThai, LocalDateTime batDau) { }
+    public record CaHienTai(
+            String maCa, String trangThai, LocalDateTime batDau
+    ) {}
 
     public record SoLieu(long tongThuCung, long lichHenHomNay, long lichChoTiepNhan,
                          long hoaDonDaThanhToan, BigDecimal doanhThuHomNay,
-                         long dichVuDangLam, long dichVuChoLam) { }
+                         long dichVuDangLam, long dichVuChoLam
+                        ) {}
 
     public record LichPhucVu(String maLichHen, LocalDateTime gioHen, String tenThuCung,
-                             String tenKhachHang, String tenDichVu, String trangThai) { }
+                             String tenKhachHang, String tenDichVu, String trangThai) {}
 
     public record CanhBaoKho(String maSanPham, String tenSanPham, int soLuongTon,
-                             int nguongCanhBao, LocalDate hanSuDung) { }
+                             int nguongCanhBao, LocalDate hanSuDung) {}
 
     public record HoaDonGanDay(String maHoaDon, LocalDateTime ngayLap,
-                               String tenKhachHang, BigDecimal tienPhaiThu) { }
+                               String tenKhachHang, BigDecimal tienPhaiThu) {}
 
-    /**
-     * Ca đang mở hoặc chờ xác nhận của nhân viên đăng nhập
-     * Không dùng TongHopCa vì dashboard chỉ cần trạng thái, không cần tổng hợp doanh thu ca.
-     */
+    /** Tìm ca còn mở hoặc đang chờ xác nhận của nhân viên đăng nhập
+      */
     public Optional<CaHienTai> timCaHienTai(String maNV) throws SQLException {
         if (maNV == null || maNV.isBlank()) return Optional.empty();
-        String sql = """
-                SELECT TOP 1 maCa, trangThai, thoiGianBatDau
-                FROM dbo.CaLamViec
-                WHERE maNV = ? AND trangThai IN ('DANG_MO', 'CHO_XAC_NHAN')
-                ORDER BY thoiGianBatDau DESC, maCa DESC
-                """;
-        synchronized (ConnectDB.class) {
-            try (PreparedStatement ps = ketNoi().prepareStatement(sql)) {
+        String sql = "SELECT TOP 1 maCa, trangThai, thoiGianBatDau " +
+                "FROM CaLamViec " +
+                "WHERE maNV = ? AND trangThai IN ('DANG_MO', 'CHO_XAC_NHAN') " +
+                "ORDER BY thoiGianBatDau DESC, maCa DESC ";
+        try (Connection con = moKetNoi();
+             PreparedStatement ps = con.prepareStatement(sql)) {
                 ps.setString(1, maNV);
                 try (ResultSet rs = ps.executeQuery()) {
-                    if (!rs.next()) return Optional.empty();
-                    return Optional.of(new CaHienTai(rs.getString("maCa"),
-                            rs.getString("trangThai"),
-                            rs.getTimestamp("thoiGianBatDau").toLocalDateTime()));
+
+                    if (!rs.next())
+                        return Optional.empty();
+
+                    return Optional.of(new CaHienTai(
+                                            rs.getString("maCa"),
+                                            rs.getString("trangThai"),
+                                            rs.getTimestamp("thoiGianBatDau").toLocalDateTime()
+                                        )
+                    );
                 }
-            }
         }
     }
 
     /**
-     * Số liệu các thẻ trong ngày: lịch bỏ lịch hủy; hóa đơn chỉ tính đã thanh toán.
-     * Doanh thu là tổng tienPhaiThu của hóa đơn trong ngày, chưa trừ giao dịch hoàn tiền.
-     * Dịch vụ đang làm là số dòng dịch vụ có trạng thái DANG_LAM trên toàn cửa hàng.
+     * Số liệu các thẻ trong ngày: lịch bỏ lịch hủy; hóa đơn chỉ tính đã thanh toán
+     * Doanh thu là tổng tienPhaiThu của hóa đơn trong ngày, chưa trừ giao dịch hoàn tiền
+     * Hai số liệu Spa đếm dòng dịch vụ DANG_LAM và CHO_LAM trên toàn cửa hàng
+     *
+     *  Các số liệu trả về: Tổng thú cưng, số lịch hẹn hôm nay,số lichj chờ tiếp nhận, số Hóa đơn đã thanh toán, tổng doanh thu hôm nay, số dịch vụ đang lam, và số dịch vụ chờ làm
      */
     public SoLieu laySoLieu(LocalDate ngay) throws SQLException {
         kiemTraNgay(ngay);
         String sql = """
                 SELECT
-                  (SELECT COUNT_BIG(*) FROM dbo.ThuCung) AS tongThuCung,
-                  (SELECT COUNT_BIG(*) FROM dbo.LichHen
-                   WHERE thoiGianHen >= ? AND thoiGianHen < ? AND trangThai <> 'HUY') AS lichHen,
-                  (SELECT COUNT_BIG(*) FROM dbo.LichHen
-                   WHERE thoiGianHen >= ? AND thoiGianHen < ?
-                     AND trangThai = 'CHO_TIEP_NHAN') AS lichCho,
-                  (SELECT COUNT_BIG(*) FROM dbo.HoaDon
-                   WHERE ngayLap >= ? AND ngayLap < ?
-                     AND trangThai = 'DA_THANH_TOAN') AS hoaDon,
-                  (SELECT COALESCE(SUM(tienPhaiThu), 0) FROM dbo.HoaDon
-                   WHERE ngayLap >= ? AND ngayLap < ?
-                     AND trangThai = 'DA_THANH_TOAN') AS doanhThu,
-                  (SELECT COUNT_BIG(*) FROM dbo.ChiTietHoaDon_DichVu
-                   WHERE trangThaiThucHien = 'DANG_LAM') AS dichVuDangLam,
-                  (SELECT COUNT_BIG(*) FROM dbo.ChiTietHoaDon_DichVu
-                   WHERE trangThaiThucHien = 'CHO_LAM') AS dichVuChoLam
+                    (SELECT COUNT(*) FROM ThuCung) AS tongThuCung,
+                    (SELECT COUNT(*) FROM LichHen
+                        WHERE thoiGianHen >= ? AND thoiGianHen < ? AND trangThai <> 'HUY') AS lichHen,
+                    (SELECT COUNT(*) FROM dbo.LichHen
+                        WHERE thoiGianHen >= ? AND thoiGianHen < ?
+                    AND trangThai = 'CHO_TIEP_NHAN') AS lichCho,
+                    (SELECT COUNT(*) FROM dbo.HoaDon
+                        WHERE ngayLap >= ? AND ngayLap < ?
+                        AND trangThai = 'DA_THANH_TOAN') as hoaDon,
+                    (SELECT SUM(tienPhaiThu,0) FROM HoaDon
+                        WHERE ngayLap >= ? AND ngayLap < ?
+                        AND trangThai = 'DA_THANH_TOAN') as doanhThu
+                    (SELECT COUNT(*)  FROM ChiTietHoaDon_DichVu
+                        WHERE trangThaiThucHien = 'DANG_LAM') AS dichVuDangLam,
+                    (SELECT COUNT(*)  FROM ChiTietHoaDon_DichVu
+                        WHERE trangThaiThucHien = 'CHO_LAM') AS dichVuChoLam,
                 """;
-        synchronized (ConnectDB.class) {
-            try (PreparedStatement ps = ketNoi().prepareStatement(sql)) {
+        try (Connection con = moKetNoi();
+             PreparedStatement ps = con.prepareStatement(sql)) {
                 for (int viTri = 1; viTri <= 7; viTri += 2) datKhoangNgay(ps, viTri, ngay);
                 try (ResultSet rs = ps.executeQuery()) {
                     rs.next();
@@ -96,7 +100,6 @@ public class TrangChuDAO {
                             rs.getBigDecimal("doanhThu"), rs.getLong("dichVuDangLam"),
                             rs.getLong("dichVuChoLam"));
                 }
-            }
         }
     }
 
@@ -115,8 +118,8 @@ public class TrangChuDAO {
                 ORDER BY lh.thoiGianHen, lh.maLichHen
                 """;
         List<LichPhucVu> ketQua = new ArrayList<>();
-        synchronized (ConnectDB.class) {
-            try (PreparedStatement ps = ketNoi().prepareStatement(sql)) {
+        try (Connection con = moKetNoi();
+             PreparedStatement ps = con.prepareStatement(sql)) {
                 ps.setInt(1, gioiHan);
                 datKhoangNgay(ps, 2, ngay);
                 try (ResultSet rs = ps.executeQuery()) {
@@ -127,7 +130,6 @@ public class TrangChuDAO {
                                 rs.getString("tenDichVu"), rs.getString("trangThai")));
                     }
                 }
-            }
         }
         return ketQua;
     }
@@ -152,8 +154,8 @@ public class TrangChuDAO {
                          ta.hanSuDung, sp.soLuongTonKho, sp.maSanPham
                 """;
         List<CanhBaoKho> ketQua = new ArrayList<>();
-        synchronized (ConnectDB.class) {
-            try (PreparedStatement ps = ketNoi().prepareStatement(sql)) {
+        try (Connection con = moKetNoi();
+             PreparedStatement ps = con.prepareStatement(sql)) {
                 Date ngayGioiHan = Date.valueOf(ngay.plusDays(soNgayCanhBao));
                 ps.setInt(1, gioiHan);
                 ps.setDate(2, ngayGioiHan);
@@ -167,7 +169,6 @@ public class TrangChuDAO {
                                 han == null ? null : han.toLocalDate()));
                     }
                 }
-            }
         }
         return ketQua;
     }
@@ -183,8 +184,8 @@ public class TrangChuDAO {
                 ORDER BY h.ngayLap DESC, h.maHoaDon DESC
                 """;
         List<HoaDonGanDay> ketQua = new ArrayList<>();
-        synchronized (ConnectDB.class) {
-            try (PreparedStatement ps = ketNoi().prepareStatement(sql)) {
+        try (Connection con = moKetNoi();
+             PreparedStatement ps = con.prepareStatement(sql)) {
                 ps.setInt(1, gioiHan);
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
@@ -193,13 +194,13 @@ public class TrangChuDAO {
                                 rs.getString("hoTen"), rs.getBigDecimal("tienPhaiThu")));
                     }
                 }
-            }
         }
         return ketQua;
     }
 
-    private static Connection ketNoi() throws SQLException {
-        return CaLamViecDAO.ketNoi();
+    /** Mỗi lần đọc dùng kết nối riêng; try-with-resources sẽ tự đóng kết nối. */
+    private Connection moKetNoi() throws SQLException {
+        return ConnectDB.getInstance().moKetNoiMoi();
     }
 
     private static void datKhoangNgay(PreparedStatement ps, int viTri, LocalDate ngay)
