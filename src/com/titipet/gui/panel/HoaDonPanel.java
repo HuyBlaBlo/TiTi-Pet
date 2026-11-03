@@ -83,7 +83,7 @@ public final class HoaDonPanel extends JPanel {
         captions.add(chu("Danh sách hóa đơn", 16, NAVY, true));
         captions.add(chu("Hóa đơn từ POS, Spa và các kênh bán hàng; hiển thị tối đa 200 bản ghi gần nhất", 11, MUTED, false));
         header.add(captions, BorderLayout.CENTER);
-        JButton csv = nut("⇩  Xuất CSV", WHITE, NAVY);
+        JButton csv = nut("Xuất CSV", WHITE, NAVY);
         csv.addActionListener(e -> xuatCsv());
         header.add(csv, BorderLayout.EAST);
         controls.add(header, BorderLayout.NORTH);

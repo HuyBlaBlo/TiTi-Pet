@@ -18,9 +18,9 @@ public final class ConnectDB {
     }
 
     public void connect() throws SQLException {
-        String url = "jdbc:sqlserver://localhost:1433;databasename=TiTiPetDB;trustservercertificate=true;Encrypt=true";
-        String user = "sa";
-        String password = "123456";
+        String url = "jdbc:sqlserver://localhost:14333;databaseName=TiTiPetDB_FULL_TEST;encrypt=true;trustServerCertificate=true";
+        String user = "Titi_pet";
+        String password = "Khang1111.";
 
         con = DriverManager.getConnection(url,user,password);
     }
