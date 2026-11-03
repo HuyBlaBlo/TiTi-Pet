@@ -74,7 +74,6 @@ public class DichVuSpa {
     public void setLoaiThuCungApDung(LoaiThuCungApDung loaiThuCungApDung) {
         this.loaiThuCungApDung = loaiThuCungApDung;
     }
-    
 	public boolean isDangHoatDong() {
         return dangHoatDong;
     }
