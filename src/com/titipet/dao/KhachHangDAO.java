@@ -43,6 +43,32 @@ public class KhachHangDAO {
     }
     
     /**
+     * Lấy toàn bộ danh sách khách hàng để nạp vào JComboBox chọn chủ nuôi
+     */
+    public List<KhachHang> layTatCaKhachHang() throws SQLException {
+        List<KhachHang> list = new ArrayList<>();
+        String sql = "SELECT maKH, hoTen, soDienThoai FROM dbo.KhachHang ORDER BY hoTen ASC";
+
+        Connection con = ConnectDB.getConnection();
+        if (con == null || con.isClosed()) {
+            ConnectDB.getInstance().connect();
+            con = ConnectDB.getConnection();
+        }
+
+        try (PreparedStatement stmt = con.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                KhachHang kh = new KhachHang();
+                kh.setMaKH(rs.getString("maKH"));
+                kh.setHoTen(rs.getString("hoTen"));
+                kh.setSoDienThoai(rs.getString("soDienThoai"));
+                list.add(kh);
+            }
+        }
+        return list;
+    }
+    
+    /**
      * Lấy dữ liệu tổng hợp để nạp trực tiếp lên JTable (gồm tên thú cưng và tổng chi tiêu).
      * Trả về List<Object[]> đại diện cho từng dòng của DefaultTableModel.
      */
