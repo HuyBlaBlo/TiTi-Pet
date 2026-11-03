@@ -1,6 +1,7 @@
 package com.titipet.gui.component;
 
 import com.titipet.util.RoundedPannel;
+import com.titipet.gui.HuongDanSuDung;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -65,6 +66,17 @@ public class TopBarPanel extends JPanel {
     private JPanel taoTaiKhoan(String name, String role, Runnable onLogout) {
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 2));
         right.setOpaque(false);
+        JButton help = new JButton("ⓘ  Hướng dẫn sử dụng");
+        help.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
+        help.setForeground(BLUE);
+        help.setBackground(new Color(245, 248, 254));
+        help.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        help.setFocusPainted(false);
+        help.putClientProperty("FlatLaf.style",
+                "arc: 12; focusWidth: 0; borderWidth: 1; borderColor: #DEE8F7; margin: 8,12,8,12");
+        help.setToolTipText("Mở tài liệu hướng dẫn TiTi Pet");
+        help.addActionListener(event -> HuongDanSuDung.moTrang(this));
+        right.add(help);
         RoundedPannel notification = new RoundedPannel(new Color(240, 246, 255), 22);
         notification.setLayout(new BorderLayout());
         notification.setPreferredSize(new Dimension(34, 34));
