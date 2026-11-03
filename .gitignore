@@ -63,4 +63,4 @@ $RECYCLE.BIN/
 .codex/
 
 # AWS local configuration
-.aws/
+.aws/.temp-*

@@ -3,6 +3,7 @@ package com.titipet.entity;
 import com.titipet.entity.enums.PhamVi;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 public class KhuyenMai {
@@ -10,7 +11,7 @@ public class KhuyenMai {
     private String tenChuongTrinh;
     private LocalDateTime ngayBatDau;
     private LocalDateTime ngayKetThuc;
-    private BigDecimal giaGiam;
+    private BigDecimal giamTram;
     private boolean trangThai;
     private PhamVi phamVi;
     private SanPham sanPhamApDung;
@@ -19,12 +20,12 @@ public class KhuyenMai {
     public KhuyenMai() {
     }
 
-    public KhuyenMai(String maKhuyenMai, String tenChuongTrinh, LocalDateTime ngayBatDau, LocalDateTime ngayKetThuc, BigDecimal giaGiam, boolean trangThai, PhamVi phamVi, SanPham sanPhamApDung, DichVuSpa dichVuApDung) {
+    public KhuyenMai(String maKhuyenMai, String tenChuongTrinh, LocalDateTime ngayBatDau, LocalDateTime ngayKetThuc, BigDecimal giamTram, boolean trangThai, PhamVi phamVi, SanPham sanPhamApDung, DichVuSpa dichVuApDung) {
         this.maKhuyenMai = maKhuyenMai;
         this.tenChuongTrinh = tenChuongTrinh;
         this.ngayBatDau = ngayBatDau;
         this.ngayKetThuc = ngayKetThuc;
-        this.giaGiam = giaGiam;
+        this.giamTram = giamTram;
         this.trangThai = trangThai;
         this.phamVi = phamVi;
         this.sanPhamApDung = sanPhamApDung;
@@ -63,12 +64,12 @@ public class KhuyenMai {
         this.ngayKetThuc = ngayKetThuc;
     }
 
-    public BigDecimal getGiaGiam() {
-        return giaGiam;
+    public BigDecimal getGiamTram() {
+        return giamTram;
     }
 
-    public void setGiaGiam(BigDecimal giaGiam) {
-        this.giaGiam = giaGiam;
+    public void setGiamTram(BigDecimal giamTram) {
+        this.giamTram = giamTram;
     }
 
     public boolean isTrangThai() {
@@ -103,7 +104,7 @@ public class KhuyenMai {
         this.dichVuApDung = dichVuApDung;
     }
 
-    //Kiểm tra khuyến mãi có hiệu lực hay không
+    // Kiểm tra khuyến mãi có hiệu lực hay không
     public boolean kiemTraHieuLuc(LocalDateTime thoiDiem) {
         if (!trangThai || thoiDiem == null || ngayBatDau == null || ngayKetThuc == null) {
             return false;
@@ -111,12 +112,13 @@ public class KhuyenMai {
         return !thoiDiem.isBefore(ngayBatDau) && !thoiDiem.isAfter(ngayKetThuc);
     }
 
-    //Tính số tiền được giảm
+    // Tính số tiền được giảm theo phần trăm (giamTram / 100 * tongTien)
     public BigDecimal tinhTienGiam(BigDecimal giaTriDuDieuKien) {
-        if (giaTriDuDieuKien == null || giaTriDuDieuKien.signum() <= 0 || giaGiam == null || giaGiam.signum() <= 0) {
+        if (giaTriDuDieuKien == null || giaTriDuDieuKien.signum() <= 0 || giamTram == null || giamTram.signum() <= 0) {
             return BigDecimal.ZERO;
         }
-        return giaGiam.min(giaTriDuDieuKien);
+        return giaTriDuDieuKien.multiply(giamTram)
+                .divide(new BigDecimal("100"), 0, RoundingMode.HALF_UP)
+                .min(giaTriDuDieuKien);
     }
-
 }
