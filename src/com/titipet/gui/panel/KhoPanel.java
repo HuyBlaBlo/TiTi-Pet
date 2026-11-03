@@ -2,10 +2,13 @@ package com.titipet.gui.panel;
 
 import com.titipet.bus.AuthService;
 import com.titipet.bus.KhoService;
+import com.titipet.bus.SanPhamService;
 import com.titipet.entity.SanPham;
 import com.titipet.entity.ThucAn;
 import com.titipet.entity.enums.VaiTro;
 import com.titipet.gui.dialog.NhapKhoDialog;
+import com.titipet.gui.dialog.ThemSanPhamDialog;
+import com.titipet.gui.dialog.CapNhatSanPhamDialog;
 import com.titipet.gui.dialog.LichSuNhapKhoDialog;
 import com.titipet.util.RoundedPannel;
 
@@ -36,6 +39,7 @@ import java.util.List;
 public class KhoPanel extends JPanel {
 
     private final KhoService khoHangService;
+    private final SanPhamService sanPhamSerVice;
     private AuthService authService;
     private VaiTro vaiTroHienTai;
 
@@ -77,24 +81,29 @@ public class KhoPanel extends JPanel {
     public KhoPanel(AuthService authService) {
         this.authService = authService;
         this.khoHangService = new KhoService();
+        this.sanPhamSerVice = new SanPhamService();
 
         if (authService != null && authService.getNhanVienDangNhap().isPresent()) {
             this.vaiTroHienTai = authService.getNhanVienDangNhap().get().getVaiTro();
         } else {
             this.vaiTroHienTai = VaiTro.QUAN_LY;
         }
+		
 
         initComponents();
         loadData("");
+        capNhatKpiToanKho();
         apDungPhanQuyen();
     }
 
     public KhoPanel(VaiTro vaiTro) {
         this.vaiTroHienTai = (vaiTro != null) ? vaiTro : VaiTro.QUAN_LY;
         this.khoHangService = new KhoService();
-
+		this.sanPhamSerVice = new SanPhamService();
+		
         initComponents();
         loadData("");
+        capNhatKpiToanKho();
         apDungPhanQuyen();
     }
 
@@ -283,8 +292,7 @@ public class KhoPanel extends JPanel {
         btnXuatCsv.addActionListener(e -> xuatFileCsv());
 
         btnMatHangMoi = createOutlineButton("+ Mặt hàng mới");
-        btnMatHangMoi.addActionListener(e -> JOptionPane.showMessageDialog(this,
-                "Chức năng tạo mặt hàng mới (DichVu/SanPham).", "Thông báo", JOptionPane.INFORMATION_MESSAGE));
+        btnMatHangMoi.addActionListener(e -> moDialogThemSP());
 
         btnNhapHang = new JButton("+ Nhập hàng");
         btnNhapHang.setBackground(COLOR_PRIMARY_BLUE);
@@ -429,7 +437,7 @@ public class KhoPanel extends JPanel {
 
         RoundedPannel bannerWarning = new RoundedPannel(new Color(254, 243, 199), 10);
         bannerWarning.setLayout(new FlowLayout(FlowLayout.LEFT, 12, 10));
-        JLabel lblNotice = new JLabel("⚠ Khi bán hàng: luôn xuất theo lô cũ trước. Các mặt hàng cận hạn ≤ 30 ngày cần ưu đãi hoặc xuất thanh lý.");
+        JLabel lblNotice = new JLabel("Khi bán hàng: luôn xuất theo lô cũ trước. Các mặt hàng cận hạn ≤ 30 ngày cần ưu đãi hoặc xuất thanh lý.");
         lblNotice.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblNotice.setForeground(new Color(180, 83, 9));
         bannerWarning.add(lblNotice);
@@ -490,27 +498,19 @@ public class KhoPanel extends JPanel {
     }
 
     // 5. TẢI DỮ LIỆU TỒN KHO & TÍNH TOÁN KPI
-    public void loadData(String keyword) {
-        if (tableModel == null) return;
-        tableModel.setRowCount(0);
-
-        int countTong = 0;
-        int countSapHet = 0;
-        int countCanHan = 0;
-        int countHetHan = 0;
-
+    /**
+     * Cập nhật số liệu 4 thẻ KPI dựa trên toàn bộ kho hàng
+     */
+    public void capNhatKpiToanKho() {
         try {
-            List<SanPham> danhSach = khoHangService.layDanhSachSanPhamKho(keyword);
+            List<SanPham> toanBoKho = khoHangService.layDanhSachSanPhamKho("");
+            int countTong = 0;
+            int countSapHet = 0;
+            int countCanHan = 0;
+            int countHetHan = 0;
 
-            for (SanPham sp : danhSach) {
+            for (SanPham sp : toanBoKho) {
                 countTong++;
-                String danhMuc = (sp instanceof ThucAn) ? "Thức ăn" : "Phụ kiện";
-                String strHsd = "--";
-
-                if (sp instanceof ThucAn ta && ta.getHanSuDung() != null) {
-                    strHsd = ta.getHanSuDung().format(DF_DATE);
-                }
-
                 String trangThai = khoHangService.xacDinhTrangThai(sp);
 
                 if ("Hết hạn".equals(trangThai)) {
@@ -520,6 +520,34 @@ public class KhoPanel extends JPanel {
                 } else if ("Sắp hết hàng".equals(trangThai)) {
                     countSapHet++;
                 }
+            }
+
+            if (lblKpiTongMatHang != null) lblKpiTongMatHang.setText(String.valueOf(countTong));
+            if (lblKpiSapHet != null) lblKpiSapHet.setText(String.valueOf(countSapHet));
+            if (lblKpiCanHan != null) lblKpiCanHan.setText(String.valueOf(countCanHan));
+            if (lblKpiHetHan != null) lblKpiHetHan.setText(String.valueOf(countHetHan));
+
+        } catch (Exception ex) {
+            System.err.println("[LỖI CẬP NHẬT KPI TOÀN KHO]: " + ex.getMessage());
+        }
+    }
+    
+    public void loadData(String keyword) {
+        if (tableModel == null) return;
+        tableModel.setRowCount(0);
+
+        try {
+            List<SanPham> danhSach = khoHangService.layDanhSachSanPhamKho(keyword);
+
+            for (SanPham sp : danhSach) {
+                String danhMuc = (sp instanceof ThucAn) ? "Thức ăn" : "Phụ kiện";
+                String strHsd = "--";
+
+                if (sp instanceof ThucAn ta && ta.getHanSuDung() != null) {
+                    strHsd = ta.getHanSuDung().format(DF_DATE);
+                }
+
+                String trangThai = khoHangService.xacDinhTrangThai(sp);
 
                 tableModel.addRow(new Object[]{
                         sp.getMaSanPham(),
@@ -532,11 +560,6 @@ public class KhoPanel extends JPanel {
                         sp.getMaSanPham()
                 });
             }
-
-            if (lblKpiTongMatHang != null) lblKpiTongMatHang.setText(String.valueOf(countTong));
-            if (lblKpiSapHet != null) lblKpiSapHet.setText(String.valueOf(countSapHet));
-            if (lblKpiCanHan != null) lblKpiCanHan.setText(String.valueOf(countCanHan));
-            if (lblKpiHetHan != null) lblKpiHetHan.setText(String.valueOf(countHetHan));
 
         } catch (Exception ex) {
             System.err.println("[LỖI LOAD KHO HÀNG]: " + ex.getMessage());
@@ -552,8 +575,50 @@ public class KhoPanel extends JPanel {
         NhapKhoDialog dialog = new NhapKhoDialog(parentFrame, khoHangService);
         dialog.setVisible(true);
         loadData(txtTimKiem.getText());
+        capNhatKpiToanKho();
     }
 
+    private void moDialogThemSP() {
+        if (!laQuanLy()) {
+            JOptionPane.showMessageDialog(this, "Chỉ Quản lý mới có quyền thêm sản phẩm", "Từ chối", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(this);
+        ThemSanPhamDialog dialog = new ThemSanPhamDialog(parentFrame, sanPhamSerVice);
+        dialog.setVisible(true);
+        loadData(txtTimKiem.getText());
+        capNhatKpiToanKho();
+    }
+    
+    private void moDialogCapNhatSP(String maSP) {
+        if (!laQuanLy()) {
+            JOptionPane.showMessageDialog(this, "Chỉ Quản lý mới có quyền thêm sản phẩm", "Từ chối", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        try {
+            // 1. Tìm thông tin sản phẩm đầy đủ từ Service
+            SanPham sp = sanPhamSerVice.timSanPhamTheoMa(maSP);
+            if (sp == null) {
+                JOptionPane.showMessageDialog(this, "Không tìm thấy thông tin sản phẩm: " + maSP, "Lỗi", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // 2. Mở dialog chỉnh sửa
+            Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(this);
+            CapNhatSanPhamDialog dialog = new CapNhatSanPhamDialog(parentFrame, sanPhamSerVice, sp);
+            dialog.setVisible(true);
+
+            // 3. Tải lại dữ liệu sau khi sửa thành công
+            if (dialog.isDaCapNhatThanhCong()) {
+                loadData(txtTimKiem.getText().trim());
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Lỗi mở cửa sổ cập nhật: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+        loadData(txtTimKiem.getText());
+        capNhatKpiToanKho();
+    }
+    
     private void xuatFileCsv() {
         if (!laQuanLy()) return;
         JFileChooser fileChooser = new JFileChooser();
@@ -729,13 +794,11 @@ public class KhoPanel extends JPanel {
                 fireEditingStopped();
                 if (!laQuanLy()) {
                     JOptionPane.showMessageDialog(KhoPanel.this,
-                            "Chỉ Quản lý mới có quyền sửa thông tin và giá sản phẩm!",
+                            "Chỉ Quản lý mới có quyền chỉnh sửa thông tin sản phẩm!",
                             "Từ chối", JOptionPane.WARNING_MESSAGE);
                     return;
                 }
-                JOptionPane.showMessageDialog(KhoPanel.this,
-                        "Mở chỉnh sửa đơn giá & thông tin mặt hàng: " + maSP,
-                        "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                moDialogCapNhatSP(maSP);
             });
         }
 
