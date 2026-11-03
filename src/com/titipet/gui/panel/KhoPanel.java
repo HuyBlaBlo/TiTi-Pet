@@ -6,6 +6,7 @@ import com.titipet.entity.SanPham;
 import com.titipet.entity.ThucAn;
 import com.titipet.entity.enums.VaiTro;
 import com.titipet.gui.dialog.NhapKhoDialog;
+import com.titipet.gui.HuongDanSuDung;
 import com.titipet.gui.dialog.LichSuNhapKhoDialog;
 import com.titipet.util.RoundedPannel;
 
@@ -180,6 +181,17 @@ public class KhoPanel extends JPanel {
 
         rightActions.add(dateBadge);
         rightActions.add(statusBadge);
+
+        JButton help = new JButton("ⓘ  Hướng dẫn sử dụng");
+        help.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        help.setForeground(COLOR_TEXT_DARK);
+        help.setBackground(Color.WHITE);
+        help.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        help.setFocusPainted(false);
+        help.putClientProperty("FlatLaf.style",
+                "arc: 12; focusWidth: 0; borderWidth: 1; borderColor: #DEE8F7; margin: 7,12,7,12");
+        help.addActionListener(event -> HuongDanSuDung.moTrang(this, "kho"));
+        rightActions.add(help);
 
         panel.add(titlePanel, BorderLayout.WEST);
         panel.add(rightActions, BorderLayout.EAST);
