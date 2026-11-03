@@ -68,10 +68,12 @@ BEGIN
         thueSuat            DECIMAL(5,2)      NOT NULL CONSTRAINT DF_DichVuSpa_Thue DEFAULT (0),
         giaDaBaoGomThue     BIT               NOT NULL CONSTRAINT DF_DichVuSpa_GiaThue DEFAULT (0),
         loaiThuCungApDung   VARCHAR(10)       NOT NULL,
+        thoiLuongPhut       INT               NOT NULL CONSTRAINT DF_DichVuSpa_ThoiLuong DEFAULT (60),
         dangHoatDong        BIT               NOT NULL CONSTRAINT DF_DichVuSpa_Active DEFAULT (1),
         CONSTRAINT PK_DichVuSpa PRIMARY KEY (maDichVu),
         CONSTRAINT CK_DichVuSpa_DonGia CHECK (donGiaCoBan >= 0),
         CONSTRAINT CK_DichVuSpa_Thue CHECK (thueSuat BETWEEN 0 AND 100),
+        CONSTRAINT CK_DichVuSpa_ThoiLuong CHECK (thoiLuongPhut > 0),
         CONSTRAINT CK_DichVuSpa_Loai CHECK (loaiThuCungApDung IN ('CHO','MEO','CA_HAI'))
     );
 END;
