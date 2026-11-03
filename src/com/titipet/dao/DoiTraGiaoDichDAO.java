@@ -4,7 +4,6 @@ import com.titipet.connectDB.ConnectDB;
 import java.math.BigDecimal;
 import java.sql.*;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.UUID;
 
 /** UC002: transaction exchange or refund; SQL Server 2012-compatible JDBC. */
@@ -44,8 +43,6 @@ public final class DoiTraGiaoDichDAO {
             throw new SQLException("Phải chọn hàng thay thế khác hàng cũ.");
         if (!"TIEN_MAT".equals(phuongThuc) && !"CHUYEN_KHOAN".equals(phuongThuc))
             throw new SQLException("Phương thức thanh toán phải là tiền mặt hoặc chuyển khoản.");
-        if (LocalTime.now().isBefore(LocalTime.NOON))
-            throw new SQLException("Chỉ tiếp nhận đổi/trả sau 12 giờ trưa.");
         synchronized (ConnectDB.class) {
             Connection c = ConnectDB.getConnection();
             if (c == null || c.isClosed()) {

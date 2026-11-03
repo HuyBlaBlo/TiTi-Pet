@@ -11,10 +11,9 @@ public class PhuKien extends SanPham{
     private String mauSac;
     private String chatLieu;
 
-    public PhuKien(String kichThuoc, String mauSac, String chatLieu) {
-        this.kichThuoc = kichThuoc;
-        this.mauSac = mauSac;
-        this.chatLieu = chatLieu;
+    public PhuKien() {
+        super();
+        setLoaiSanPham(LoaiSanPham.PHU_KIEN);
     }
 
     public PhuKien(String maSanPham, String tenSanPham, BigDecimal giaBan, BigDecimal giaNhap, int soLuongTonKho, String maVach, BigDecimal thueSuat, LoaiSanPham loaiSanPham, int nguongCanhBaoTon, String kichThuoc, String mauSac, String chatLieu) {
@@ -22,9 +21,6 @@ public class PhuKien extends SanPham{
         this.kichThuoc = kichThuoc;
         this.mauSac = mauSac;
         this.chatLieu = chatLieu;
-    }
-
-    public PhuKien() {
     }
 
     public String getKichThuoc() {

@@ -325,7 +325,7 @@ public class LichHenDAO {
                 while (rs.next()) {
                     KhachHang kh = mapKhachHang(rs);
                     ds.add(new ThuCung(rs.getString("maThuCung"), rs.getString("tenThuCung"),
-                            rs.getString("loaiThuCung"), rs.getDouble("canNang"),
+                            LoaiThuCungApDung.valueOf(rs.getString("loaiThuCung")), rs.getDouble("canNang"),
                             rs.getString("tinhTrangLong"), rs.getString("ghiChu"), kh));
                 }
             }
@@ -351,6 +351,7 @@ public class LichHenDAO {
         }
         return ds;
     }
+
     /** Danh sách dịch vụ Spa đang hoạt động để đổ vào combo dịch vụ. */
     public List<DichVuSpa> layDanhSachDichVuSpa() throws SQLException {
         String sql = """
@@ -384,6 +385,7 @@ public class LichHenDAO {
         }
         return ds;
     }
+
     
  // ========================= 5. HÀM HỖ TRỢ =========================
 
@@ -419,7 +421,7 @@ public class LichHenDAO {
                 rs.getString("soDienThoai"), HangTV.valueOf(rs.getString("hangTV")),
                 rs.getInt("diemTichLuy"));
         ThuCung tc = new ThuCung(rs.getString("maThuCung"), rs.getString("tenThuCung"),
-                rs.getString("loaiThuCung"), rs.getDouble("canNang"),
+                LoaiThuCungApDung.valueOf(rs.getString("loaiThuCung")), rs.getDouble("canNang"),
                 rs.getString("tinhTrangLong"), rs.getString("ghiChuThuCung"), kh);
         String loai = rs.getString("loaiThuCungApDung");
         LoaiThuCungApDung loaiEnum = null;

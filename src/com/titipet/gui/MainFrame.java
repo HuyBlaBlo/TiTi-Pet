@@ -1,11 +1,18 @@
 package com.titipet.gui;
 
-import com.formdev.flatlaf.FlatLightLaf;
 import com.titipet.bus.AuthService;
+import com.titipet.entity.NhanVien;
 import com.titipet.entity.enums.VaiTro;
 import com.titipet.gui.component.SidebarPanel;
 import com.titipet.gui.component.TopBarPanel;
+import com.titipet.gui.panel.BanHangPanel;
+import com.titipet.gui.panel.ChotCaPanel;
+import com.titipet.gui.panel.DoiTraPanel;
 import com.titipet.gui.panel.KhachHangPanel;
+import com.titipet.gui.panel.LichHenPanel;
+import com.titipet.gui.panel.TiepNhanSpaPanel;
+import com.titipet.gui.panel.ThuCungPanel;
+import com.titipet.gui.panel.TrangChuPanel;
 
 import javax.swing.*;
 import java.awt.*;
@@ -14,7 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 
 public class MainFrame extends JFrame {
-    // Dùng các mã này khi gắn panel của thành viên vào khung chính.
+    // Mã màn hình dùng chung với các mục trong SidebarPanel.
     public static final String TRANG_CHU = "trang-chu";
     public static final String CHOT_CA = "chot-ca";
     public static final String LICH_HEN = "lich-hen";
@@ -53,10 +60,61 @@ public class MainFrame extends JFrame {
         topBar = new TopBarPanel(tenNhanVien, vaiTro, this::dangXuat);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         taoGiaoDien();
-        // Thêm các pannel
-        dangKyPanel(KHACH_HANG, new KhachHangPanel());
+        dangKyCacPanel();
         hienThiManHinh(TRANG_CHU);
         cauHinhCuaSo();
+    }
+
+    /** Gắn các panel đã có giao diện vào đúng mã menu của SidebarPanel. */
+    private void dangKyCacPanel() {
+        NhanVien nhanVien = authService.getNhanVienDangNhap().orElse(null);
+        String maNV = nhanVien == null ? null : nhanVien.getMaNV();
+        VaiTro vaiTro = nhanVien == null ? null : nhanVien.getVaiTro();
+
+        dangKyTrangChu(maNV, nhanVien == null ? "TiTi Pet" : nhanVien.getHoTen());
+        dangKyChotCa(maNV, vaiTro);
+        dangKyLichHen();
+        dangKyBanHang(maNV);
+        dangKyDoiTra(maNV);
+        dangKyKhachHang();
+        dangKyThuCung(nhanVien);
+    }
+
+    /** Trang chủ nhận mã nhân viên để hiện trạng thái ca và callback để mở menu. */
+    private void dangKyTrangChu(String maNV, String tenNhanVien) {
+        dangKyPanel(TRANG_CHU, new TrangChuPanel(maNV, tenNhanVien, this::hienThiManHinh));
+    }
+
+    /** Mở/chốt ca cần mã nhân viên và vai trò để hiện đúng chức năng. */
+    private void dangKyChotCa(String maNV, VaiTro vaiTro) {
+        dangKyPanel(CHOT_CA, new ChotCaPanel(maNV, vaiTro));
+    }
+
+    /** Mục Đặt lịch hẹn Spa. */
+    private void dangKyLichHen() {
+        dangKyPanel(LICH_HEN, new LichHenPanel());
+    }
+
+    /** POS cần mã nhân viên đăng nhập khi tạo giao dịch. */
+    private void dangKyBanHang(String maNV) {
+        BanHangPanel panel = new BanHangPanel();
+        panel.setMaNhanVienDangNhap(maNV);
+        dangKyPanel(BAN_HANG, panel);
+    }
+
+    /** Đổi trả cần mã nhân viên để xác nhận giao dịch. */
+    private void dangKyDoiTra(String maNV) {
+        dangKyPanel(DOI_TRA, new DoiTraPanel(maNV));
+    }
+
+    /** Khách hàng & VIP dùng AuthService để kiểm tra quyền trên màn hình. */
+    private void dangKyKhachHang() {
+        dangKyPanel(KHACH_HANG, new KhachHangPanel(authService));
+    }
+
+    /** Mục Hồ sơ thú cưng nhận nhân viên đăng nhập để kiểm tra quyền thao tác. */
+    private void dangKyThuCung(NhanVien nhanVien) {
+        dangKyPanel(THU_CUNG, new ThuCungPanel(nhanVien));
     }
 
     private void taoGiaoDien() {
@@ -121,10 +179,18 @@ public class MainFrame extends JFrame {
      * màn hình chưa gắn panel sẽ có nền trống */
     public void hienThiManHinh(String maManHinh) {
         kiemTraMaManHinh(maManHinh);
+        // Panel tiếp nhận tự truy vấn CSDL khi khởi tạo. Chỉ tạo khi mở menu này,
+        // để bảng CSDL chưa hoàn thiện không chặn các màn hình khác lúc đăng nhập.
+        if (TIEP_NHAN_SPA.equals(maManHinh) && !panels.containsKey(TIEP_NHAN_SPA)) {
+            dangKyPanel(TIEP_NHAN_SPA, new TiepNhanSpaPanel());
+        }
         manHinhHienTai = maManHinh;
         sidebar.chonManHinh(maManHinh);
         topBar.setTieuDe(sidebar.layTieuDe(maManHinh));
         cardLayout.show(contentPanel, panels.containsKey(maManHinh) ? maManHinh : PANEL_TRONG);
+        if (TRANG_CHU.equals(maManHinh)) {
+            ((TrangChuPanel) panels.get(TRANG_CHU)).taiDuLieu();
+        }
     }
 
     private void kiemTraMaManHinh(String maManHinh) {
