@@ -1,6 +1,7 @@
 package com.titipet.gui;
 
 import com.titipet.bus.AuthService;
+import com.titipet.bus.HoaDonService;
 import com.titipet.entity.NhanVien;
 import com.titipet.entity.enums.VaiTro;
 import com.titipet.gui.component.SidebarPanel;
@@ -8,6 +9,7 @@ import com.titipet.gui.component.TopBarPanel;
 import com.titipet.gui.panel.BanHangPanel;
 import com.titipet.gui.panel.ChotCaPanel;
 import com.titipet.gui.panel.DoiTraPanel;
+import com.titipet.gui.panel.HoaDonPanel;
 import com.titipet.gui.panel.KhachHangPanel;
 import com.titipet.gui.panel.KhoPanel;
 import com.titipet.gui.panel.KhuyenMaiPanel;
@@ -193,6 +195,9 @@ public class MainFrame extends JFrame {
         sidebar.chonManHinh(maManHinh);
         topBar.setTieuDe(sidebar.layTieuDe(maManHinh));
         cardLayout.show(contentPanel, panels.containsKey(maManHinh) ? maManHinh : PANEL_TRONG);
+        if (HOA_DON.equals(maManHinh)) {
+            ((HoaDonPanel) panels.get(HOA_DON)).taiDuLieu();
+        }
         if (TRANG_CHU.equals(maManHinh)) {
             ((TrangChuPanel) panels.get(TRANG_CHU)).taiDuLieu();
         }
@@ -206,6 +211,9 @@ public class MainFrame extends JFrame {
     private boolean duocMoPanelMoi(String maManHinh) {
         VaiTro vaiTro = authService.getNhanVienDangNhap()
                 .map(NhanVien::getVaiTro).orElse(null);
+        if (HOA_DON.equals(maManHinh)) {
+            return vaiTro == VaiTro.QUAN_LY || vaiTro == VaiTro.THU_NGAN;
+        }
         if (DIEU_PHOI_SPA.equals(maManHinh)) {
             return vaiTro == VaiTro.QUAN_LY;
         }
@@ -227,6 +235,8 @@ public class MainFrame extends JFrame {
         }
 
         switch (maManHinh) {
+            case HOA_DON -> dangKyPanel(HOA_DON, new HoaDonPanel(
+                    new HoaDonService(authService.getNhanVienDangNhap().orElse(null))));
             case TIEP_NHAN_SPA -> dangKyPanel(TIEP_NHAN_SPA, new TiepNhanSpaPanel());
             case DIEU_PHOI_SPA -> dangKyPanel(DIEU_PHOI_SPA, new LichThoSpaPanel());
             case KHO -> dangKyPanel(KHO, new KhoPanel(authService));
