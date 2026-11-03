@@ -18,7 +18,11 @@ public final class ConnectDB {
 
     /** Mở kết nối dùng chung cho các DAO hiện có. */
     public void connect() throws SQLException {
-        con = moKetNoiMoi();
+        String url = "jdbc:sqlserver://localhost:1433;databaseName=TiTiPetDB_FULL_TEST;encrypt=true;trustServerCertificate=true";
+        String user = "sa";
+        String password = "123456";
+
+        con = DriverManager.getConnection(url,user,password);
     }
 
     public void disconnect() {

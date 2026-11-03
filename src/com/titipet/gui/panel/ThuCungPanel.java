@@ -245,7 +245,7 @@ public class ThuCungPanel extends JPanel{
 
         // Mã thú cưng + Cân nặng
         String canNangStr = tc.getCanNang() > 0 ? (tc.getCanNang() + " kg") : "--";
-        bodyCard.add(taoDongThongTin("Mã / Cân nặng:", tc.getMaThuCung() + " • " + canNangStr));
+        bodyCard.add(taoDongThongTin("Mã / Cân nặng:", tc.getMaThuCung() + " - " + canNangStr));
         bodyCard.add(Box.createVerticalStrut(4));
 
         // Tên chủ nuôi

@@ -3,6 +3,8 @@ package com.titipet.gui.panel;
 import com.titipet.bus.AuthService;
 import com.titipet.bus.KhachHangService;
 import com.titipet.connectDB.ConnectDB;
+import com.titipet.entity.KhachHang;
+import com.titipet.entity.SanPham;
 import com.titipet.entity.enums.HangTV;
 import com.titipet.entity.enums.VaiTro;
 import com.titipet.gui.dialog.ThemKhachHangDialog;
@@ -82,6 +84,8 @@ public class KhachHangPanel extends JPanel{
         }
 
         initComponents();
+        capNhatKpiToanBoKhachHang();
+        apDungPhanQuyen();
         loadData("");
         apDungPhanQuyen();
     }
@@ -92,7 +96,10 @@ public class KhachHangPanel extends JPanel{
     public KhachHangPanel(VaiTro vaiTroNguoiDung) {
         this.vaiTroHienTai = (vaiTroNguoiDung != null) ? vaiTroNguoiDung : VaiTro.QUAN_LY;
         this.khachHangService = new KhachHangService();
+        
         initComponents();
+        capNhatKpiToanBoKhachHang();
+        apDungPhanQuyen();
         loadData("");
         apDungPhanQuyen();
     }
@@ -515,28 +522,49 @@ public class KhachHangPanel extends JPanel{
 
     // 5. PHƯƠNG THỨC TẢI VÀ NẠP DỮ LIỆU TỪ TẦNG NGHIỆP VỤ (BUS)
     /**
+     * Cập nhật số liệu 4 thẻ KPI dựa trên toàn bộ danh sách khách hàng (không bị ảnh hưởng bởi ô tìm kiếm)
+     */
+    public void capNhatKpiToanBoKhachHang() {
+        try {
+            // Luôn lấy toàn bộ danh sách khách hàng bằng từ khóa rỗng ""
+            List<Object[]> toanBoRows = khachHangService.layDanhSachHienThiBang("");
+            int countTong = 0;
+            int countBac = 0;
+            int countVang = 0;
+            int countKimCuong = 0;
+
+            for (Object[] r : toanBoRows) {
+                countTong++;
+                HangTV hang = (HangTV) r[3];
+                if (hang == HangTV.HANG_1) countBac++;
+                else if (hang == HangTV.HANG_2) countVang++;
+                else if (hang == HangTV.HANG_3) countKimCuong++;
+            }
+
+            if (lblTongThanhVien != null) lblTongThanhVien.setText(String.valueOf(countTong));
+            if (lblHangBac != null) lblHangBac.setText(String.valueOf(countBac));
+            if (lblHangVang != null) lblHangVang.setText(String.valueOf(countVang));
+            if (lblHangKimCuong != null) lblHangKimCuong.setText(String.valueOf(countKimCuong));
+
+        } catch (Exception e) {
+            System.err.println("[LỖI CẬP NHẬT KPI TOÀN BỘ KHÁCH HÀNG]: " + e.getMessage());
+        }
+    }
+    
+    /**
      * Tải dữ liệu từ database thông qua tầng BUS, đổ lên JTable và tính toán lại 4 thẻ KPI[cite: 1]
      * @param keyword Từ khóa tìm kiếm (họ tên hoặc SĐT)
      */
     private void loadData(String keyword) {
         // Xóa trắng bảng cũ trước khi nạp lại
         tableModel.setRowCount(0);
-        int countTong = 0;
-        int countBac = 0;
-        int countVang = 0;
-        int countKimCuong = 0;
 
         try {
-            // Lấy danh sách dòng dữ liệu trực tiếp từ KhachHangService
+            // Lấy danh sách dòng dữ liệu theo từ khóa tìm kiếm trực tiếp từ KhachHangService
             List<Object[]> rows = khachHangService.layDanhSachHienThiBang(keyword);
 
             for (Object[] r : rows) {
-                countTong++;
-                // Lấy enum HangTV từ mảng dữ liệu để phân loại và đếm số lượng cho 4 thẻ KPI
                 HangTV hang = (HangTV) r[3];
-                if (hang == HangTV.HANG_1) countBac++;
-                else if (hang == HangTV.HANG_2) countVang++;
-                else if (hang == HangTV.HANG_3) countKimCuong++;
 
                 // Thêm một dòng vào TableModel
                 tableModel.addRow(new Object[]{
@@ -544,23 +572,16 @@ public class KhachHangPanel extends JPanel{
                         r[1],                                       // Cột 1: Số điện thoại
                         r[2],                                       // Cột 2: Danh sách tên thú cưng
                         hang,                                       // Cột 3: Enum Hạng thành viên
-                        r[4],                              			// Cột 4: Điểm kèm icon
+                        r[4],                                       // Cột 4: Điểm kèm icon
                         dfTien.format((BigDecimal) r[5]),           // Cột 5: Định dạng tiền Việt Nam
                         r[6]                                        // Cột 6: Mã KH làm tham số định danh
                 });
             }
 
-            // Cập nhật lại số liệu hiển thị trên 4 thẻ KPI
-            lblTongThanhVien.setText(String.valueOf(countTong));
-            lblHangBac.setText(String.valueOf(countBac));
-            lblHangVang.setText(String.valueOf(countVang));
-            lblHangKimCuong.setText(String.valueOf(countKimCuong));
-            
             // GỌI CĂN CHỈNH BỀ RỘNG CỘT
             tuDongCanChinhDoRongCot(tblKhachHang);
 
         } catch (Exception e) {
-            // Hiển thị thông báo khi có lỗi truy vấn dữ liệu từ CSDL
             JOptionPane.showMessageDialog(this, e.getMessage(), "Lỗi tải dữ liệu", JOptionPane.ERROR_MESSAGE);
         }
     }
@@ -574,6 +595,7 @@ public class KhachHangPanel extends JPanel{
         txtTimKiem.setText(""); // Xóa text trên ô tìm kiếm
         // Nạp lại dữ liệu để cập nhật khách hàng mới vừa thêm vào bảng
         loadData("");
+        capNhatKpiToanBoKhachHang();
     }
 
     // 6. CÁC LỚP RENDERER ĐỊNH DẠNG TÙY BIẾN CHO JTABLE
@@ -755,6 +777,7 @@ public class KhachHangPanel extends JPanel{
 
                 // Tải lại bảng sau khi hoàn tất chỉnh sửa để cập nhật dữ liệu mới nhất
                 loadData(txtTimKiem.getText());
+                capNhatKpiToanBoKhachHang();
             });
         }
         

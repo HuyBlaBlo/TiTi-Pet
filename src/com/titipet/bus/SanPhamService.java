@@ -122,8 +122,22 @@ public class SanPhamService {
         }
         return sanPhamDAO.ngungKinhDoanhSanPham(maSP);
     }
+    
+    // 5. TÌM THEO MÃ SP
+    public SanPham timSanPhamTheoMa(String maSP) throws SQLException {
+        if (maSP == null || maSP.isBlank()) {
+            return null;
+        }
+        List<SanPham> ds = layDanhSachSanPham();
+        for (SanPham sp : ds) {
+            if (maSP.equalsIgnoreCase(sp.getMaSanPham())) {
+                return sp;
+            }
+        }
+        return null;
+    }
 
-    // 5. VALIDATION
+    // 6. VALIDATION
     private void kiemTraHopLeSanPham(SanPham sp) {
         if (sp == null) {
             throw new IllegalArgumentException("Dữ liệu sản phẩm không được rỗng!");
