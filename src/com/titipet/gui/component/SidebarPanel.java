@@ -1,6 +1,7 @@
 package com.titipet.gui.component;
 
 import com.titipet.gui.MainFrame;
+import com.titipet.gui.HuongDanSuDung;
 import com.titipet.util.RoundedPannel;
 import com.titipet.util.RoundedPannelLinear;
 
@@ -16,6 +17,8 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.Objects;
 
 public class SidebarPanel extends RoundedPannelLinear {
     private static final Color TEXT = new Color(211, 226, 248);
@@ -24,11 +27,14 @@ public class SidebarPanel extends RoundedPannelLinear {
     private final Map<String, String> titles = new LinkedHashMap<>();
     private final ButtonGroup menuGroup = new ButtonGroup();
     private final Consumer<String> onMenuSelected;
+    private final Predicate<String> duocTruyCap;
 
     public SidebarPanel(String tenNhanVien, String vaiTro,
-                        Consumer<String> onMenuSelected, Runnable onLogout) {
+                        Consumer<String> onMenuSelected, Runnable onLogout,
+                        Predicate<String> duocTruyCap) {
         super(new Color(34, 82, 153), new Color(22, 53, 99), 0, Direction.VERTICAL);
         this.onMenuSelected = onMenuSelected;
+        this.duocTruyCap = Objects.requireNonNull(duocTruyCap);
         setLayout(new BorderLayout());
         setPreferredSize(new Dimension(260, 0));
         add(taoThuongHieu(), BorderLayout.NORTH);
@@ -58,21 +64,31 @@ public class SidebarPanel extends RoundedPannelLinear {
         themNhom(menu, "TỔNG QUAN");
         themMuc(menu, MainFrame.TRANG_CHU, "Trang chủ", "Tổng quan cửa hàng", "▦.png");
         themMuc(menu, MainFrame.CHOT_CA, "Mở / chốt ca", "Mở / chốt ca", "◷.png");
-        themNhom(menu, "VẬN HÀNH");
+        if (duocTruyCap.test(MainFrame.LICH_HEN)
+                || duocTruyCap.test(MainFrame.DIEU_PHOI_SPA)) {
+            themNhom(menu, "VẬN HÀNH");
+        }
         themMuc(menu, MainFrame.LICH_HEN, "Đặt lịch hẹn Spa", "Đặt lịch hẹn Spa", "▦(1).png");
         themMuc(menu, MainFrame.TIEP_NHAN_SPA, "Tiếp nhận thú cưng", "Tiếp nhận thú cưng", "🐾.png");
         themMuc(menu, MainFrame.DIEU_PHOI_SPA, "Điều phối Spa", "Điều phối Spa", "✂.png");
         themMuc(menu, MainFrame.BAN_HANG, "Bán hàng POS", "Bán hàng POS", "▣.png");
         themMuc(menu, MainFrame.DOI_TRA, "Đổi trả hàng", "Đổi trả hàng", "⇄.png");
         themMuc(menu, MainFrame.HOA_DON, "Hóa đơn / giao dịch", "Hóa đơn / giao dịch", "▤.png");
-        themNhom(menu, "KHÁCH HÀNG & KHO");
+        if (duocTruyCap.test(MainFrame.KHACH_HANG)
+                || duocTruyCap.test(MainFrame.KHO)) {
+            themNhom(menu, "KHÁCH HÀNG & KHO");
+        }
         themMuc(menu, MainFrame.KHACH_HANG, "Khách hàng & VIP", "Khách hàng & VIP", "♙.png");
         themMuc(menu, MainFrame.THU_CUNG, "Hồ sơ thú cưng", "Hồ sơ thú cưng", "♡.png");
         themMuc(menu, MainFrame.KHO, "Kho & nhập hàng", "Kho & nhập hàng", "▤(1).png");
         themMuc(menu, MainFrame.DICH_VU_SAN_PHAM, "Dịch vụ / sản phẩm", "Dịch vụ / sản phẩm", "◈.png");
         themMuc(menu, MainFrame.KHUYEN_MAI, "Khuyến mãi", "Khuyến mãi", "_.png");
-        themNhom(menu, "QUẢN TRỊ & BÀN GIAO");
+        if (duocTruyCap.test(MainFrame.THONG_KE)) {
+            themNhom(menu, "QUẢN TRỊ & BÀN GIAO");
+        }
         themMuc(menu, MainFrame.THONG_KE, "Báo cáo thống kê", "Báo cáo thống kê", "▥.png");
+        themNhom(menu, "TRỢ GIÚP");
+        themNutHuongDan(menu);
 
         JScrollPane scroll = new JScrollPane(menu);
         scroll.setBorder(BorderFactory.createEmptyBorder());
@@ -92,6 +108,9 @@ public class SidebarPanel extends RoundedPannelLinear {
     }
 
     private void themMuc(JPanel menu, String key, String text, String title, String iconFile) {
+        // Lưu mọi mã để phân biệt màn hình hợp lệ với menu bị ẩn.
+        titles.put(key, title);
+        if (!duocTruyCap.test(key)) return;
         JToggleButton button = new JToggleButton(text, taiIcon(iconFile, 18, TEXT));
         button.setName(key);
         button.setHorizontalAlignment(SwingConstants.LEFT);
@@ -108,9 +127,27 @@ public class SidebarPanel extends RoundedPannelLinear {
                         + " selectedBackground: #3C67A4; selectedForeground: #FFFFFF");
         button.addActionListener(event -> onMenuSelected.accept(key));
         menuButtons.put(key, button);
-        titles.put(key, title);
         menuGroup.add(button);
         menu.add(button);
+        menu.add(Box.createVerticalStrut(3));
+    }
+
+    /** Nút trợ giúp độc lập, không làm thay đổi màn hình đang chọn trong sidebar. */
+    private void themNutHuongDan(JPanel menu) {
+        JButton help = new JButton("ⓘ  Hướng dẫn sử dụng");
+        help.setHorizontalAlignment(SwingConstants.LEFT);
+        help.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 13));
+        help.setForeground(Color.WHITE);
+        help.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        help.setAlignmentX(Component.LEFT_ALIGNMENT);
+        help.setPreferredSize(new Dimension(230, 40));
+        help.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        help.putClientProperty("FlatLaf.style",
+                "arc: 12; borderWidth: 0; focusWidth: 0; margin: 8,12,8,12;"
+                + " background: #294F88; hoverBackground: #315D99");
+        help.setToolTipText("Mở hướng dẫn toàn bộ phần mềm bằng trình duyệt");
+        help.addActionListener(event -> HuongDanSuDung.moTrang(this));
+        menu.add(help);
         menu.add(Box.createVerticalStrut(3));
     }
 

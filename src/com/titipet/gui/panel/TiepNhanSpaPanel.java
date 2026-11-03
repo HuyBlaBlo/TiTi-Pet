@@ -1,10 +1,12 @@
 package com.titipet.gui.panel;
 
+import com.titipet.dao.DichVuSpaDAO;
 import com.titipet.dao.LichHenDAO;
 import com.titipet.entity.DichVuSpa;
 import com.titipet.entity.LichHen;
 import com.titipet.entity.NhanVien;
 import com.titipet.entity.enums.TrangThaiLichHen;
+import com.titipet.bus.TiepNhanService;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -19,8 +21,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 
+
 public class TiepNhanSpaPanel extends JPanel {
-    private final LichHenDAO lichHenDAO = new LichHenDAO();
+	private final LichHenDAO lichHenDAO = new LichHenDAO();
+	private final DichVuSpaDAO dichVuSpaDAO = new DichVuSpaDAO();
+	private final TiepNhanService tiepNhanService = new TiepNhanService();
+    
 
     private static final Color BG = new Color(245,248,253);
     private static final Color BLUE = new Color(36,101,190);
@@ -39,6 +45,7 @@ public class TiepNhanSpaPanel extends JPanel {
     private List<DichVuSpa> danhSachDichVu = new ArrayList<>();
     private LichHen lichHenDangChon;
     private boolean khachVangLai;
+    private JLabel lblTenKhachHang;
 
     private JLabel lblChoTiepNhan, lblDangPhucVu, lblDaHoanThanh;
     private JPanel danhSachKhachPanel;
@@ -53,6 +60,12 @@ public class TiepNhanSpaPanel extends JPanel {
     private JTextField txtCanNang, txtTinhTrangKhac;
     private JTextArea txtGhiChu;
     private JLabel lblGioTra, lblGiaDichVu, lblPhuThu, lblTongTien;
+    
+    private Runnable onLapHoaDon;
+
+    public void setOnLapHoaDon(Runnable callback) {
+        this.onLapHoaDon = callback;
+    }
 
     public TiepNhanSpaPanel() {
         initComponents();
@@ -100,10 +113,9 @@ public class TiepNhanSpaPanel extends JPanel {
         p.add(right,BorderLayout.EAST);
         return p;
     }
-   
-    
+
     private JPanel createStatistics() {
-        JPanel p = new JPanel(new GridLayout(1, 3, 8, 0));
+    	JPanel p = new JPanel(new GridLayout(1, 3, 8, 0));
         p.setOpaque(false);
 
         lblChoTiepNhan = new JLabel("0");
@@ -111,72 +123,69 @@ public class TiepNhanSpaPanel extends JPanel {
         lblDaHoanThanh = new JLabel("0");
 
         p.add(createStat(new JLabel("🐾"), lblChoTiepNhan,
-                "Chờ tiếp nhận", new Color(255,244,229)));
+                "Chờ tiếp nhận", new Color(255, 244, 229)));
 
         p.add(createStat(new JLabel("✂"), lblDangPhucVu,
                 "Đang phục vụ", LIGHT_BLUE));
 
         p.add(createStat(new JLabel("✓"), lblDaHoanThanh,
-                "Đã hoàn thành", new Color(229,248,241)));
+                "Đã hoàn thành", new Color(229, 248, 241)));
 
         return p;
     }
-    
-    
 
     private JPanel createStat(JLabel jLabel, JLabel number,
             String caption, Color iconBg) {
-    	JPanel card = createCard();
-        card.setLayout(new BorderLayout(10, 0));
-        card.setBorder(new EmptyBorder(8, 10, 8, 10));
+    	 JPanel card = createCard();
+    	    card.setLayout(new BorderLayout(10, 0));
+    	    card.setBorder(new EmptyBorder(8, 10, 8, 10));
 
-        // Ô chứa logo bo góc
-        JPanel iconBox = new JPanel(new GridBagLayout()) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
+    	    // Ô chứa logo bo góc
+    	    JPanel iconBox = new JPanel(new GridBagLayout()) {
+    	        @Override
+    	        protected void paintComponent(Graphics g) {
+    	            Graphics2D g2 = (Graphics2D) g.create();
 
-                g2.setRenderingHint(
-                    RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON
-                );
+    	            g2.setRenderingHint(
+    	                RenderingHints.KEY_ANTIALIASING,
+    	                RenderingHints.VALUE_ANTIALIAS_ON
+    	            );
 
-                g2.setColor(iconBg);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 14, 14);
+    	            g2.setColor(iconBg);
+    	            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 14, 14);
 
-                g2.dispose();
-            }
-        };
+    	            g2.dispose();
+    	        }
+    	    };
 
-        iconBox.setOpaque(false);
-        iconBox.setPreferredSize(new Dimension(38, 38));
-        iconBox.setMinimumSize(new Dimension(38, 38));
-        iconBox.setMaximumSize(new Dimension(38, 38));
+    	    iconBox.setOpaque(false);
+    	    iconBox.setPreferredSize(new Dimension(38, 38));
+    	    iconBox.setMinimumSize(new Dimension(38, 38));
+    	    iconBox.setMaximumSize(new Dimension(38, 38));
 
-        // Logo nằm chính giữa ô
-        jLabel.setOpaque(false);
-        iconBox.add(jLabel);
+    	    // Logo nằm chính giữa ô
+    	    jLabel.setOpaque(false);
+    	    iconBox.add(jLabel);
 
-        // Số lượng và tiêu đề
-        number.setFont(new Font("Segoe UI", Font.BOLD, 23));
-        number.setForeground(TEXT);
+    	    // Số lượng và tiêu đề
+    	    number.setFont(new Font("Segoe UI", Font.BOLD, 23));
+    	    number.setForeground(TEXT);
 
-        JLabel sub = new JLabel(caption);
-        sub.setFont(new Font("Segoe UI", Font.PLAIN, 10));
-        sub.setForeground(MUTED);
+    	    JLabel sub = new JLabel(caption);
+    	    sub.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+    	    sub.setForeground(MUTED);
 
-        JPanel text = new JPanel();
-        text.setOpaque(false);
-        text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
+    	    JPanel text = new JPanel();
+    	    text.setOpaque(false);
+    	    text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
 
-        text.add(number);
-        text.add(sub);
+    	    text.add(number);
+    	    text.add(sub);
 
-        card.add(iconBox, BorderLayout.WEST);
-        card.add(text, BorderLayout.CENTER);
+    	    card.add(iconBox, BorderLayout.WEST);
+    	    card.add(text, BorderLayout.CENTER);
 
-        return card;
-
+    	    return card;
     }
 
     private JPanel createMainContent() {
@@ -275,7 +284,6 @@ public class TiepNhanSpaPanel extends JPanel {
         form.add(serviceScroll, g);
         JPanel conditions=new JPanel(new GridLayout(1,4,4,0));
         conditions.setOpaque(false);
-        
         radBinhThuong = new JRadioButton("Bình thường");
         radRoiLong = new JRadioButton("Rối lông (+50.000 đ)");
         radVeRan = new JRadioButton("Ve, bọ/rận (+70.000 đ)");
@@ -286,6 +294,7 @@ public class TiepNhanSpaPanel extends JPanel {
         groupTinhTrang.add(radRoiLong);
         groupTinhTrang.add(radVeRan);
         groupTinhTrang.add(radKhac);
+
         radBinhThuong.setSelected(true);
 
         txtTinhTrangKhac = new JTextField();
@@ -319,27 +328,30 @@ public class TiepNhanSpaPanel extends JPanel {
             capNhatGiaVaGioTra();
         });
         
-     // Hiển thị tình trạng lông/da
-        JPanel panelTinhTrang = new JPanel(new GridLayout(1, 4, 4, 0));
-        panelTinhTrang.setOpaque(false);
+     // Thêm 4 radio vào panel
+        conditions.add(radBinhThuong);
+        conditions.add(radRoiLong);
+        conditions.add(radVeRan);
+        conditions.add(radKhac);
 
-        panelTinhTrang.add(radBinhThuong);
-        panelTinhTrang.add(radRoiLong);
-        panelTinhTrang.add(radVeRan);
-        panelTinhTrang.add(radKhac);
-
+        // Tiêu đề tình trạng lông
         g.gridy = 5;
         g.gridx = 0;
         g.gridwidth = 3;
-
         form.add(label("Tình trạng lông/da:"), g);
 
+        // Hiển thị 4 radio button
         g.gridy = 6;
-        form.add(panelTinhTrang, g);
+        form.add(conditions, g);
         
-        JPanel other=new JPanel(new BorderLayout(6,0)); other.setOpaque(false);
-        other.add(new JLabel("Mô tả khác:"),BorderLayout.WEST); other.add(txtTinhTrangKhac,BorderLayout.CENTER);
-        g.gridy=7; form.add(other,g);
+        txtTinhTrangKhac.setText("");
+        capNhatGiaVaGioTra();
+        JPanel other=new JPanel(new BorderLayout(6,0)); 
+        other.setOpaque(false);
+        other.add(new JLabel("Mô tả khác:"),BorderLayout.WEST); 
+        other.add(txtTinhTrangKhac,BorderLayout.CENTER);
+        g.gridy=7; 
+        form.add(other,g);
 
         cboThoSpa=new JComboBox<>();
         cboThoSpa.setFont(new Font("Segoe UI",Font.PLAIN,11));
@@ -380,8 +392,18 @@ public class TiepNhanSpaPanel extends JPanel {
         JPanel footer=new JPanel(new BorderLayout(8,0)); footer.setOpaque(false);
         JButton reject = button("× Từ chối dịch vụ",
         	    new Color(255,239,240), RED);
-        JButton invoice = button("→ Tạo hóa đơn", BLUE, Color.WHITE);
-        reject.addActionListener(e->tuChoiDichVu()); invoice.addActionListener(e->taoHoaDon());
+        JButton invoice=button("→ Tạo hóa đơn",BLUE,Color.WHITE);
+        reject.addActionListener(e->tuChoiDichVu()); 
+        invoice.addActionListener(e -> {
+            if (onLapHoaDon != null) {
+                onLapHoaDon.run();
+            } else {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Callback lập hóa đơn chưa được cấu hình trong MainFrame!"
+                );
+            }
+        });
         footer.add(reject,BorderLayout.WEST); footer.add(invoice,BorderLayout.EAST);
 
         JScrollPane formScroll=new JScrollPane(form);
@@ -404,13 +426,9 @@ public class TiepNhanSpaPanel extends JPanel {
         JPanel header=new JPanel(new BorderLayout()); header.setOpaque(false);
         JLabel title=new JLabel("Danh sách khách chờ");
         title.setFont(new Font("Segoe UI",Font.BOLD,12)); title.setForeground(TEXT);
-        JButton refresh = button("Làm mới", LIGHT_BLUE, BLUE);
-        
-        refresh.addActionListener(e -> loadDuLieu());
+        JButton refresh=button("Làm mới",LIGHT_BLUE,BLUE); refresh.addActionListener(e->loadDuLieu());
+        header.add(title,BorderLayout.WEST); header.add(refresh,BorderLayout.EAST);
 
-        header.add(title, BorderLayout.WEST);
-        header.add(refresh, BorderLayout.EAST);
-        
         danhSachKhachPanel=new JPanel();
         danhSachKhachPanel.setOpaque(false);
         danhSachKhachPanel.setLayout(new BoxLayout(danhSachKhachPanel,BoxLayout.Y_AXIS));
@@ -440,7 +458,8 @@ public class TiepNhanSpaPanel extends JPanel {
         status.setFont(new Font("Segoe UI",Font.BOLD,9)); status.setBorder(new EmptyBorder(4,6,4,6));
         status.addActionListener(e->chonLichHen(lh));
 //        item.add(icon,BorderLayout.WEST); 
-        item.add(info,BorderLayout.CENTER); item.add(status,BorderLayout.EAST);
+        item.add(info,BorderLayout.CENTER); 
+        item.add(status,BorderLayout.EAST);
         item.setCursor(new Cursor(Cursor.HAND_CURSOR));
         item.addMouseListener(new java.awt.event.MouseAdapter(){
             @Override public void mouseClicked(java.awt.event.MouseEvent e){chonLichHen(lh);}
@@ -452,7 +471,7 @@ public class TiepNhanSpaPanel extends JPanel {
     private void loadDuLieu(){
         try{
             danhSachTho=lichHenDAO.layDanhSachThoSpa();
-            danhSachDichVu=lichHenDAO.layDanhSachDichVuSpa();
+            danhSachDichVu = dichVuSpaDAO.layDanhSachDichVuSpa();
             cboThoSpa.removeAllItems();
             for(NhanVien nv:danhSachTho)cboThoSpa.addItem(nv);
             hienThiDanhSachDichVu();
@@ -583,6 +602,20 @@ public class TiepNhanSpaPanel extends JPanel {
                 "Khách vãng lai",
                 JOptionPane.INFORMATION_MESSAGE
         );
+    }
+    
+    private List<DichVuSpa> layDichVuDuocChon() {
+        List<DichVuSpa> ketQua = new ArrayList<>();
+
+        for (int i = 0; i < danhSachCheckBoxDichVu.size(); i++) {
+            JCheckBox cb = danhSachCheckBoxDichVu.get(i);
+
+            if (cb.isSelected()) {
+                ketQua.add(danhSachDichVu.get(i));
+            }
+        }
+
+        return ketQua;
     }
 
     private void capNhatGiaVaGioTra() {
@@ -743,27 +776,88 @@ public class TiepNhanSpaPanel extends JPanel {
 
         if (confirm != JOptionPane.YES_OPTION) return;
 
-        // Ghép tên các dịch vụ đã chọn
-        StringBuilder services = new StringBuilder();
-
-        for (DichVuSpa dv : selected) {
-            if (services.length() > 0) {
-                services.append(", ");
-            }
-
-            services.append(dv.getTenDichVu());
-        }
-
+     // Lấy nhân viên phụ trách
         NhanVien nhanVien = (NhanVien) cboThoSpa.getSelectedItem();
 
-        showWarning(
-                "Thông tin tiếp nhận hợp lệ.\n"
-                        + "Nhân viên phụ trách: " + nhanVien.getHoTen()
-                        + "\nDịch vụ: " + services
-                        + "\nPhụ thu: " + MONEY.format(tinhPhuThu())
-                        + "\n\nChưa lưu phiếu tiếp nhận/chuyển màn hình hóa đơn "
-                        + "vì cần kết nối DAO và HoaDonPanel."
+        // Lấy thông tin khách hàng và thú cưng từ lịch hẹn
+        String maKH = lichHenDangChon.getKhachHang().getMaKH();
+        String maThuCung = lichHenDangChon.getThuCung().getMaThuCung();
+
+        // Lấy cân nặng
+        BigDecimal canNang = new BigDecimal(
+                txtCanNang.getText().trim().replace(",", ".")
         );
+
+        // Lấy tình trạng lông
+        String tinhTrangLong;
+
+        if (radBinhThuong.isSelected()) {
+            tinhTrangLong = "Bình thường";
+        } else if (radRoiLong.isSelected()) {
+            tinhTrangLong = "Rối lông";
+        } else if (radVeRan.isSelected()) {
+            tinhTrangLong = "Ve, bọ/rận";
+        } else {
+            tinhTrangLong = "Khác: " + txtTinhTrangKhac.getText().trim();
+        }
+
+        // Lấy thời gian trả dự kiến
+        int tongThoiLuong = 0;
+
+        for (DichVuSpa dv : selected) {
+            tongThoiLuong += dv.getThoiLuongPhut();
+        }
+
+        LocalDateTime thoiGianBatDau = LocalDateTime.now();
+
+        if (lichHenDangChon.getThoiGianHen().isAfter(thoiGianBatDau)) {
+            thoiGianBatDau = lichHenDangChon.getThoiGianHen();
+        }
+
+        LocalDateTime thoiGianTraDuKien =
+                thoiGianBatDau.plusMinutes(tongThoiLuong);
+
+        // Tạo mã phiếu tiếp nhận
+        String maPhieuTiepNhan = "PTN"
+                + System.currentTimeMillis();
+
+        // Gọi Service tạo phiếu tiếp nhận
+        boolean ketQua = tiepNhanService.taoPhieuTiepNhan(
+                maPhieuTiepNhan,
+                lichHenDangChon.getMaLichHen(),
+                maKH,
+                maThuCung,
+                canNang,
+                tinhTrangLong,
+                txtGhiChu.getText().trim(),
+                thoiGianTraDuKien,
+                selected
+        );
+
+        // Kiểm tra kết quả
+        if (ketQua) {
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Tạo phiếu tiếp nhận thành công!\n"
+                            + "Mã phiếu: " + maPhieuTiepNhan
+                            + "\nNhân viên: " + nhanVien.getHoTen()
+                            + "\nTổng dịch vụ: " + MONEY.format(
+                                    selected.stream()
+                                            .map(DichVuSpa::getDonGiaCoBan)
+                                            .filter(java.util.Objects::nonNull)
+                                            .reduce(BigDecimal.ZERO, BigDecimal::add)
+                            )
+                            + "\nPhụ thu: " + MONEY.format(tinhPhuThu()),
+                    "Thành công",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+
+            loadDuLieu();
+
+        } else {
+            showError("Tạo phiếu tiếp nhận thất bại!");
+        }
     }
 
     private JPanel createCard(){
@@ -806,18 +900,33 @@ public class TiepNhanSpaPanel extends JPanel {
         panelDichVu.removeAll();
         danhSachCheckBoxDichVu.clear();
 
+        // Chỉ lấy dịch vụ đang hoạt động
+        List<DichVuSpa> dichVuHoatDong = new ArrayList<>();
+
         for (DichVuSpa dv : danhSachDichVu) {
+            if (dv.isDangHoatDong()) {
+                dichVuHoatDong.add(dv);
+            }
+        }
+
+        // Thay danh sách gốc bằng danh sách đang hoạt động
+        danhSachDichVu = dichVuHoatDong;
+
+        for (DichVuSpa dv : danhSachDichVu) {
+            BigDecimal gia = dv.getDonGiaCoBan() == null
+                    ? BigDecimal.ZERO
+                    : dv.getDonGiaCoBan();
+
             JCheckBox cb = new JCheckBox(
                     dv.getTenDichVu()
-                    + " • "
-                    + MONEY.format(dv.getDonGiaCoBan() == null
-                            ? BigDecimal.ZERO : dv.getDonGiaCoBan())
-                    + " • "
-                    + dv.getThoiLuongPhut() + " phút"
+                    + " • " + MONEY.format(gia)
+                    + " • " + dv.getThoiLuongPhut() + " phút"
             );
 
             cb.setFont(new Font("Segoe UI", Font.PLAIN, 11));
             cb.setBackground(Color.WHITE);
+            cb.setFocusPainted(false);
+            cb.setAlignmentX(Component.LEFT_ALIGNMENT);
 
             cb.addActionListener(e -> capNhatGiaVaGioTra());
 
@@ -828,19 +937,15 @@ public class TiepNhanSpaPanel extends JPanel {
         panelDichVu.revalidate();
         panelDichVu.repaint();
     } 
-    private List<DichVuSpa> layDichVuDuocChon() {
-        List<DichVuSpa> ketQua = new ArrayList<>();
-
-        for (int i = 0; i < danhSachCheckBoxDichVu.size(); i++) {
-            JCheckBox cb = danhSachCheckBoxDichVu.get(i);
-
-            if (cb.isSelected()) {
-                ketQua.add(danhSachDichVu.get(i));
-            }
+    
+    public void setLichHenDangChon(LichHen lichHen) {
+        if (lichHen == null) {
+            return;
         }
 
-        return ketQua;
+        chonLichHen(lichHen);
     }
+    
     public static void main(String[] args){
         SwingUtilities.invokeLater(()->{
             try{UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());}catch(Exception ignored){}

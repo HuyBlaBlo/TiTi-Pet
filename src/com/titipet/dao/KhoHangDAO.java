@@ -101,44 +101,9 @@ public class KhoHangDAO {
         return danhSach;
     }
 
+ // Nạp chồng ngắn gọn: tự truyền ghi chú là chuỗi rỗng sang hàm 5 tham số bên dưới
     public boolean nhapKhoSanPham(String maSP, int soLuongNhapThem, BigDecimal giaNhapMoi, LocalDate hsdMoi) throws SQLException {
-        Connection con = ConnectDB.getInstance().getConnection();
-        if (con == null || con.isClosed()) {
-            ConnectDB.getInstance().connect();
-            con = ConnectDB.getInstance().getConnection();
-        }
-
-        boolean autoCommitGoc = con.getAutoCommit();
-        try {
-            con.setAutoCommit(false);
-
-            // 1. Tăng số lượng tồn kho và cập nhật đơn giá nhập mới nhất
-            String sqlSP = "UPDATE dbo.SanPham SET soLuongTonKho = soLuongTonKho + ?, giaNhap = ? WHERE maSanPham = ?";
-            try (PreparedStatement psSP = con.prepareStatement(sqlSP)) {
-                psSP.setInt(1, soLuongNhapThem);
-                psSP.setBigDecimal(2, giaNhapMoi != null ? giaNhapMoi : BigDecimal.ZERO);
-                psSP.setString(3, maSP);
-                psSP.executeUpdate();
-            }
-
-            // 2. Nếu có HSD mới và sản phẩm là Thức ăn thì cập nhật bảng ThucAn
-            if (hsdMoi != null) {
-                String sqlTA = "UPDATE dbo.ThucAn SET hanSuDung = ? WHERE maSanPham = ?";
-                try (PreparedStatement psTA = con.prepareStatement(sqlTA)) {
-                    psTA.setDate(1, java.sql.Date.valueOf(hsdMoi));
-                    psTA.setString(2, maSP);
-                    psTA.executeUpdate();
-                }
-            }
-
-            con.commit();
-            return true;
-        } catch (SQLException ex) {
-            con.rollback();
-            throw ex;
-        } finally {
-            con.setAutoCommit(autoCommitGoc);
-        }
+        return nhapKhoSanPham(maSP, soLuongNhapThem, giaNhapMoi, hsdMoi, "");
     }
     
  // --- DTO Lịch sử nhập kho ---

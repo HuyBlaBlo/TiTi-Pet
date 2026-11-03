@@ -1,6 +1,7 @@
 package com.titipet.gui.panel;
 
 import com.titipet.bus.KhachHangService;
+import com.titipet.dao.DichVuSpaDAO;
 import com.titipet.dao.LichHenDAO;
 import com.titipet.entity.DichVuSpa;
 import com.titipet.entity.KhachHang;
@@ -28,6 +29,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.function.Consumer;
 
+
 /**
  * Màn hình đặt lịch hẹn Spa - TiTiPet.
  * Giao diện được dựng bằng Swing, kế thừa JPanel và sử dụng trực tiếp LichHenDAO.
@@ -36,6 +38,7 @@ public class LichHenPanel extends JPanel {
 
     private final LichHenDAO lichHenDAO;
     private final KhachHangService khachHangService;
+    private DichVuSpaDAO dichVuSpaDAO = new DichVuSpaDAO();
 
     private static final Color COLOR_BG = new Color(245, 248, 253);
     private static final Color COLOR_BLUE = new Color(36, 101, 190);
@@ -62,6 +65,8 @@ public class LichHenPanel extends JPanel {
     private JLabel lblNgayLich;
     private JPanel danhSachLichPanel;
     private KhachHang khachHangDangChon;
+ // Callback chuyển sang màn hình tiếp nhận Spa
+    private Consumer<LichHen> onTiepNhan;
 
     public LichHenPanel() {
         lichHenDAO = new LichHenDAO();
@@ -311,7 +316,6 @@ public class LichHenPanel extends JPanel {
         btnXacNhan.setBorderPainted(false);
         btnXacNhan.setFocusPainted(false);
 
-        buttonPanel.add(btnXacNhan, BorderLayout.CENTER);
         buttonPanel.add(btnXacNhan, BorderLayout.CENTER);
 
         // Panel phía dưới
@@ -634,7 +638,7 @@ public class LichHenPanel extends JPanel {
     private void loadComboboxData() {
         try {
             cboDichVu.removeAllItems();
-            for (DichVuSpa dv : lichHenDAO.layDanhSachDichVuSpa()) {
+            for (DichVuSpa dv : dichVuSpaDAO.layDanhSachDichVuSpa()) {
                 cboDichVu.addItem(new ComboItem<>(dv, dv.getTenDichVu()));
             }
             cboThoSpa.removeAllItems();
@@ -867,16 +871,48 @@ public class LichHenPanel extends JPanel {
     }
 
     private void capNhatTrangThai(LichHen lh, boolean tiepNhan) {
-        int confirm = JOptionPane.showConfirmDialog(this,
-                tiepNhan ? "Xác nhận tiếp nhận lịch hẹn này?" : "Bạn có chắc muốn hủy lịch hẹn này?",
-                "Xác nhận", JOptionPane.YES_NO_OPTION);
-        if (confirm != JOptionPane.YES_OPTION) return;
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                tiepNhan
+                        ? "Xác nhận tiếp nhận lịch hẹn này?"
+                        : "Bạn có chắc muốn hủy lịch hẹn này?",
+                "Xác nhận",
+                JOptionPane.YES_NO_OPTION
+        );
+
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+
         try {
             boolean ok = tiepNhan
                     ? lichHenDAO.tiepNhanLichHen(lh.getMaLichHen())
                     : lichHenDAO.huyLichHen(lh.getMaLichHen());
-            if (ok) loadLichHenTheoNgay(parseNgay(txtNgayLich.getText()));
-            else showWarning("Không thể cập nhật lịch hẹn. Vui lòng tải lại dữ liệu.");
+
+            if (!ok) {
+                showWarning("Không thể cập nhật lịch hẹn. Vui lòng tải lại dữ liệu.");
+                return;
+            }
+
+            // Cập nhật trạng thái trên đối tượng lịch hiện tại
+            if (tiepNhan) {
+                lh.setTrangThai(TrangThaiLichHen.DA_TIEP_NHAN);
+            } else {
+                lh.setTrangThai(TrangThaiLichHen.DA_HUY);
+            }
+
+            // Tải lại danh sách lịch hẹn
+            loadLichHenTheoNgay(parseNgay(txtNgayLich.getText()));
+
+            // Nếu là tiếp nhận thì chuyển sang màn hình Tiếp nhận Spa
+            if (tiepNhan) {
+                if (onTiepNhan != null) {
+                    onTiepNhan.accept(lh);
+                } else {
+                    showWarning("Chưa cấu hình chuyển sang màn hình Tiếp nhận Spa.");
+                }
+            }
+
         } catch (SQLException ex) {
             showError("Lỗi cập nhật trạng thái: " + ex.getMessage());
         }
@@ -910,5 +946,8 @@ public class LichHenPanel extends JPanel {
         private final String label;
         private ComboItem(T value, String label) { this.value = value; this.label = label; }
         @Override public String toString() { return label; }
+    }
+    public void setOnTiepNhan(Consumer<LichHen> callback) {
+        this.onTiepNhan = callback;
     }
 }

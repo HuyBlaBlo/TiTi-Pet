@@ -123,7 +123,7 @@ public class SanPhamService {
         return sanPhamDAO.ngungKinhDoanhSanPham(maSP);
     }
     
-    // 5. NGỪNG KINH DOANH 
+    // 5. TÌM THEO MÃ SP
     public SanPham timSanPhamTheoMa(String maSP) throws SQLException {
         if (maSP == null || maSP.isBlank()) {
             return null;

@@ -1,5 +1,6 @@
 package com.titipet.gui.panel;
 
+import com.titipet.gui.HuongDanSuDung;
 import com.titipet.bus.BanHangKhachHangService;
 import com.titipet.bus.BanHangKhuyenMaiService;
 import com.titipet.dao.BanHangKhuyenMaiDAO.KhuyenMaiPOS;
@@ -148,16 +149,7 @@ public class BanHangPanel extends JPanel {
         tools.add(PosUI.button("● Chưa mở ca", new Color(170, 111, 28), new Color(255, 243, 222), null));
         PosUI.StyledButton flow = PosUI.button("Hướng dẫn sử dụng", NAVY, WHITE, BORDER);
         flow.setIcon(PosIcons.of("help", 15, NAVY));
-        flow.addActionListener(e -> message(
-                "HƯỚNG DẪN SỬ DỤNG POS\n\n" +
-                "1. Gõ tên, mã hoặc mã vạch sản phẩm rồi nhấn Tìm.\n" +
-                "2. Nhấn dấu + trên thẻ sản phẩm để thêm vào giỏ.\n" +
-                "3. Sửa số lượng bằng + / - hoặc xóa sản phẩm trong giỏ.\n" +
-                "4. Chọn khách hàng để tính ưu đãi thành viên và điểm.\n" +
-                "5. Chọn nguồn đơn hàng, phương thức thanh toán.\n" +
-                "6. Xem tổng cần thanh toán ở cuối khung bên phải.\n" +
-                "7. Nhấn Tính tiền để nhập tiền khách đưa và xem tiền thối.\n\n" +
-                "Lưu ý: Đơn giá Spa phải được xác nhận theo cân nặng và dịch vụ."));
+        flow.addActionListener(e -> HuongDanSuDung.moTrang(this, "ban-hang"));
         tools.add(flow);
         heading.add(tools, BorderLayout.EAST);
         heading.setPreferredSize(new Dimension(100, 106));
