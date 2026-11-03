@@ -19,6 +19,7 @@ import com.titipet.gui.panel.LichThoSpaPanel;
 import com.titipet.gui.panel.SanPhamPanel;
 import com.titipet.gui.panel.TiepNhanSpaPanel;
 import com.titipet.gui.panel.ThuCungPanel;
+import com.titipet.gui.panel.ThongKePanel;
 import com.titipet.gui.panel.TrangChuPanel;
 
 import javax.swing.*;
@@ -195,6 +196,9 @@ public class MainFrame extends JFrame {
         if (TRANG_CHU.equals(maManHinh)) {
             ((TrangChuPanel) panels.get(TRANG_CHU)).taiDuLieu();
         }
+        if (THONG_KE.equals(maManHinh)) {
+            ((ThongKePanel) panels.get(THONG_KE)).taiDuLieu();
+        }
     }
 
     /**
@@ -223,8 +227,8 @@ public class MainFrame extends JFrame {
             case KHO -> dangKyPanel(KHO, new KhoPanel(authService));
             case DICH_VU_SAN_PHAM -> dangKyPanel(DICH_VU_SAN_PHAM, new SanPhamPanel(authService));
             case KHUYEN_MAI -> dangKyPanel(KHUYEN_MAI, new KhuyenMaiPanel(authService));
+            case THONG_KE -> dangKyPanel(THONG_KE, new ThongKePanel(authService));
             default -> {
-                // Thống kê chưa được gắn panel trong phiên bản hiện tại.
             }
         }
     }
