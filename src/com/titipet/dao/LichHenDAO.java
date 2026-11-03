@@ -351,6 +351,7 @@ public class LichHenDAO {
         }
         return ds;
     }
+
     /** Danh sách dịch vụ Spa đang hoạt động để đổ vào combo dịch vụ. */
     public List<DichVuSpa> layDanhSachDichVuSpa() throws SQLException {
         String sql = """
@@ -384,6 +385,7 @@ public class LichHenDAO {
         }
         return ds;
     }
+
     
  // ========================= 5. HÀM HỖ TRỢ =========================
 
