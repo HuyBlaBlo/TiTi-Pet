@@ -81,20 +81,6 @@ public class DichVuSpa {
     public void setDangHoatDong(boolean dangHoatDong) {
         this.dangHoatDong = dangHoatDong;
     }
-    private int thoiLuongPhut;
-
-    public int getThoiLuongPhut() {
-        return thoiLuongPhut;
-    }
-
-    public void setThoiLuongPhut(int thoiLuongPhut) {
-        if (thoiLuongPhut <= 0) {
-            throw new IllegalArgumentException(
-                "Thời lượng dịch vụ phải lớn hơn 0 phút."
-            );
-        }
-        this.thoiLuongPhut = thoiLuongPhut;
-    }
 
     @Override
     public String toString() {
