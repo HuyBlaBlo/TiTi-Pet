@@ -2,6 +2,7 @@ package com.titipet.gui;
 
 import com.titipet.bus.AuthService;
 import com.titipet.bus.HoaDonService;
+import com.titipet.bus.PhanQuyenManHinh;
 import com.titipet.entity.NhanVien;
 import com.titipet.entity.enums.VaiTro;
 import com.titipet.gui.component.SidebarPanel;
@@ -47,6 +48,7 @@ public class MainFrame extends JFrame {
     private static final Color CONTENT_BACKGROUND = new Color(245, 248, 254);
 
     private final AuthService authService;
+    private final PhanQuyenManHinh phanQuyenManHinh;
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel contentPanel = new JPanel(cardLayout);
     private final Map<String, JPanel> panels = new HashMap<>();
@@ -57,38 +59,27 @@ public class MainFrame extends JFrame {
     public MainFrame(AuthService authService) {
         super("TiTiPet - Quản lý cửa hàng");
         this.authService = Objects.requireNonNull(authService);
+        if (!authService.daDangNhap()) {
+            throw new IllegalStateException("Cần đăng nhập trước khi mở cửa sổ chính.");
+        }
+        phanQuyenManHinh = new PhanQuyenManHinh(authService);
         String tenNhanVien = authService.getNhanVienDangNhap()
                 .map(nhanVien -> nhanVien.getHoTen())
                 .orElse("TiTi Pet");
         String vaiTro = layTenVaiTro();
 
-        sidebar = new SidebarPanel(tenNhanVien, vaiTro, this::hienThiManHinh, this::dangXuat);
+        sidebar = new SidebarPanel(tenNhanVien, vaiTro, this::hienThiManHinh, this::dangXuat,
+                phanQuyenManHinh::duocTruyCap);
         topBar = new TopBarPanel(tenNhanVien, vaiTro, this::dangXuat);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         taoGiaoDien();
-        dangKyCacPanel();
         hienThiManHinh(TRANG_CHU);
         cauHinhCuaSo();
     }
 
-    /** Gắn các panel đã có giao diện vào đúng mã menu của SidebarPanel. */
-    private void dangKyCacPanel() {
-        NhanVien nhanVien = authService.getNhanVienDangNhap().orElse(null);
-        String maNV = nhanVien == null ? null : nhanVien.getMaNV();
-        VaiTro vaiTro = nhanVien == null ? null : nhanVien.getVaiTro();
-
-        dangKyTrangChu(maNV, nhanVien == null ? "TiTi Pet" : nhanVien.getHoTen());
-        dangKyChotCa(maNV, vaiTro);
-        dangKyLichHen();
-        dangKyBanHang(maNV);
-        dangKyDoiTra(maNV);
-        dangKyKhachHang();
-        dangKyThuCung(nhanVien);
-    }
-
-    /** Trang chủ nhận mã nhân viên để hiện trạng thái ca và callback để mở menu. */
-    private void dangKyTrangChu(String maNV, String tenNhanVien) {
-        dangKyPanel(TRANG_CHU, new TrangChuPanel(maNV, tenNhanVien, this::hienThiManHinh));
+    /** Trang chủ dùng cùng phiên đăng nhập để tải đúng dữ liệu theo vai trò. */
+    private void dangKyTrangChu(String tenNhanVien) {
+        dangKyPanel(TRANG_CHU, new TrangChuPanel(authService, tenNhanVien, this::hienThiManHinh));
     }
 
     /** Mở/chốt ca cần mã nhân viên và vai trò để hiện đúng chức năng. */
@@ -161,6 +152,9 @@ public class MainFrame extends JFrame {
      */
     public void dangKyPanel(String maManHinh, JPanel panel) {
         kiemTraMaManHinh(maManHinh);
+        if (!phanQuyenManHinh.duocTruyCap(maManHinh)) {
+            throw new SecurityException("Không có quyền đăng ký màn hình: " + maManHinh);
+        }
         Objects.requireNonNull(panel, "Panel không được null.");
         JPanel oldPanel = panels.get(maManHinh);
         if (oldPanel == panel) {
@@ -184,7 +178,7 @@ public class MainFrame extends JFrame {
     /** Chuyển menu, cập nhật tiêu đề và hiển thị panel tương ứng. */
     public void hienThiManHinh(String maManHinh) {
         kiemTraMaManHinh(maManHinh);
-        if (!duocMoPanelMoi(maManHinh)) {
+        if (!phanQuyenManHinh.duocTruyCap(maManHinh)) {
             // Nút menu đã được Swing chọn trước khi gọi callback; chọn lại màn hình cũ.
             sidebar.chonManHinh(manHinhHienTai);
             JOptionPane.showMessageDialog(this, "Màn hình này chưa cho phép tài khoản hiện tại truy cập.");
@@ -204,27 +198,6 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * Chặn trước khi tạo panel, vì constructor của các màn hình này đã đọc CSDL.
-     * Điều phối Spa hiện lấy dữ liệu của mọi thợ, nên chỉ mở cho quản lý cho tới
-     * khi truy vấn được giới hạn theo nhân viên được phân công.
-     */
-    private boolean duocMoPanelMoi(String maManHinh) {
-        VaiTro vaiTro = authService.getNhanVienDangNhap()
-                .map(NhanVien::getVaiTro).orElse(null);
-        if (HOA_DON.equals(maManHinh)) {
-            return vaiTro == VaiTro.QUAN_LY || vaiTro == VaiTro.THU_NGAN;
-        }
-        if (DIEU_PHOI_SPA.equals(maManHinh)) {
-            return vaiTro == VaiTro.QUAN_LY;
-        }
-        if (KHO.equals(maManHinh) || DICH_VU_SAN_PHAM.equals(maManHinh)
-                || KHUYEN_MAI.equals(maManHinh)) {
-            return vaiTro == VaiTro.QUAN_LY || vaiTro == VaiTro.THU_NGAN;
-        }
-        return true;
-    }
-
-    /**
      * Các panel này đọc CSDL ngay trong constructor, nên chỉ tạo khi người dùng mở menu.
      * Truyền AuthService cho các module đã có kiểm tra vai trò riêng; không dùng
      * constructor mặc định của chúng vì constructor đó mặc định là quản lý.
@@ -234,16 +207,24 @@ public class MainFrame extends JFrame {
             return;
         }
 
+        NhanVien nhanVien = authService.getNhanVienDangNhap().orElseThrow();
+        String maNV = nhanVien.getMaNV();
         switch (maManHinh) {
-            case HOA_DON -> dangKyPanel(HOA_DON, new HoaDonPanel(
-                    new HoaDonService(authService.getNhanVienDangNhap().orElse(null))));
+            case TRANG_CHU -> dangKyTrangChu(nhanVien.getHoTen());
+            case CHOT_CA -> dangKyChotCa(maNV, nhanVien.getVaiTro());
+            case LICH_HEN -> dangKyLichHen();
+            case BAN_HANG -> dangKyBanHang(maNV);
+            // Giữ màn hình hóa đơn đã có khi chuyển sang đăng ký panel theo quyền.
+            case HOA_DON -> dangKyPanel(HOA_DON, new HoaDonPanel(new HoaDonService(nhanVien)));
+            case KHACH_HANG -> dangKyKhachHang();
+            case THU_CUNG -> dangKyThuCung(nhanVien);
             case TIEP_NHAN_SPA -> dangKyPanel(TIEP_NHAN_SPA, new TiepNhanSpaPanel());
             case DIEU_PHOI_SPA -> dangKyPanel(DIEU_PHOI_SPA, new LichThoSpaPanel());
             case KHO -> dangKyPanel(KHO, new KhoPanel(authService));
             case DICH_VU_SAN_PHAM -> dangKyPanel(DICH_VU_SAN_PHAM, new SanPhamPanel(authService));
             case KHUYEN_MAI -> dangKyPanel(KHUYEN_MAI, new KhuyenMaiPanel(authService));
             default -> {
-                // Các panel còn lại đã đăng ký lúc khởi tạo hoặc chưa có giao diện.
+                // Thống kê chưa được gắn panel trong phiên bản hiện tại.
             }
         }
     }
