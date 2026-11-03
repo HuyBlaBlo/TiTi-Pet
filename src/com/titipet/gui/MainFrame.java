@@ -9,7 +9,11 @@ import com.titipet.gui.panel.BanHangPanel;
 import com.titipet.gui.panel.ChotCaPanel;
 import com.titipet.gui.panel.DoiTraPanel;
 import com.titipet.gui.panel.KhachHangPanel;
+import com.titipet.gui.panel.KhoPanel;
+import com.titipet.gui.panel.KhuyenMaiPanel;
 import com.titipet.gui.panel.LichHenPanel;
+import com.titipet.gui.panel.LichThoSpaPanel;
+import com.titipet.gui.panel.SanPhamPanel;
 import com.titipet.gui.panel.TiepNhanSpaPanel;
 import com.titipet.gui.panel.ThuCungPanel;
 import com.titipet.gui.panel.TrangChuPanel;
@@ -175,21 +179,62 @@ public class MainFrame extends JFrame {
         contentPanel.repaint();
     }
 
-    /** ddổi menu, tiêu đề và panel
-     * màn hình chưa gắn panel sẽ có nền trống */
+    /** Chuyển menu, cập nhật tiêu đề và hiển thị panel tương ứng. */
     public void hienThiManHinh(String maManHinh) {
         kiemTraMaManHinh(maManHinh);
-        // Panel tiếp nhận tự truy vấn CSDL khi khởi tạo. Chỉ tạo khi mở menu này,
-        // để bảng CSDL chưa hoàn thiện không chặn các màn hình khác lúc đăng nhập.
-        if (TIEP_NHAN_SPA.equals(maManHinh) && !panels.containsKey(TIEP_NHAN_SPA)) {
-            dangKyPanel(TIEP_NHAN_SPA, new TiepNhanSpaPanel());
+        if (!duocMoPanelMoi(maManHinh)) {
+            // Nút menu đã được Swing chọn trước khi gọi callback; chọn lại màn hình cũ.
+            sidebar.chonManHinh(manHinhHienTai);
+            JOptionPane.showMessageDialog(this, "Màn hình này chưa cho phép tài khoản hiện tại truy cập.");
+            return;
         }
+        dangKyPanelKhiMoLanDau(maManHinh);
         manHinhHienTai = maManHinh;
         sidebar.chonManHinh(maManHinh);
         topBar.setTieuDe(sidebar.layTieuDe(maManHinh));
         cardLayout.show(contentPanel, panels.containsKey(maManHinh) ? maManHinh : PANEL_TRONG);
         if (TRANG_CHU.equals(maManHinh)) {
             ((TrangChuPanel) panels.get(TRANG_CHU)).taiDuLieu();
+        }
+    }
+
+    /**
+     * Chặn trước khi tạo panel, vì constructor của các màn hình này đã đọc CSDL.
+     * Điều phối Spa hiện lấy dữ liệu của mọi thợ, nên chỉ mở cho quản lý cho tới
+     * khi truy vấn được giới hạn theo nhân viên được phân công.
+     */
+    private boolean duocMoPanelMoi(String maManHinh) {
+        VaiTro vaiTro = authService.getNhanVienDangNhap()
+                .map(NhanVien::getVaiTro).orElse(null);
+        if (DIEU_PHOI_SPA.equals(maManHinh)) {
+            return vaiTro == VaiTro.QUAN_LY;
+        }
+        if (KHO.equals(maManHinh) || DICH_VU_SAN_PHAM.equals(maManHinh)
+                || KHUYEN_MAI.equals(maManHinh)) {
+            return vaiTro == VaiTro.QUAN_LY || vaiTro == VaiTro.THU_NGAN;
+        }
+        return true;
+    }
+
+    /**
+     * Các panel này đọc CSDL ngay trong constructor, nên chỉ tạo khi người dùng mở menu.
+     * Truyền AuthService cho các module đã có kiểm tra vai trò riêng; không dùng
+     * constructor mặc định của chúng vì constructor đó mặc định là quản lý.
+     */
+    private void dangKyPanelKhiMoLanDau(String maManHinh) {
+        if (panels.containsKey(maManHinh)) {
+            return;
+        }
+
+        switch (maManHinh) {
+            case TIEP_NHAN_SPA -> dangKyPanel(TIEP_NHAN_SPA, new TiepNhanSpaPanel());
+            case DIEU_PHOI_SPA -> dangKyPanel(DIEU_PHOI_SPA, new LichThoSpaPanel());
+            case KHO -> dangKyPanel(KHO, new KhoPanel(authService));
+            case DICH_VU_SAN_PHAM -> dangKyPanel(DICH_VU_SAN_PHAM, new SanPhamPanel(authService));
+            case KHUYEN_MAI -> dangKyPanel(KHUYEN_MAI, new KhuyenMaiPanel(authService));
+            default -> {
+                // Các panel còn lại đã đăng ký lúc khởi tạo hoặc chưa có giao diện.
+            }
         }
     }
 
