@@ -20,7 +20,8 @@ public final class PhanQuyenManHinh {
     public boolean duocTruyCap(String maManHinh) {
         VaiTro vaiTro = authService
                 .getNhanVienDangNhap()
-                .map(nhanVien ->).orElse(null);
+                .map(nhanVien ->nhanVien.getVaiTro())
+                .orElse(null);
         return duocTruyCap(vaiTro, maManHinh);
     }
 

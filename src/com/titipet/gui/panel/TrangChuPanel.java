@@ -1,7 +1,10 @@
 package com.titipet.gui.panel;
 
+import com.titipet.bus.AuthService;
 import com.titipet.bus.TrangChuService;
 import com.titipet.dao.TrangChuDAO;
+import com.titipet.entity.NhanVien;
+import com.titipet.entity.enums.VaiTro;
 import com.titipet.gui.MainFrame;
 import com.titipet.gui.PosUI;
 
@@ -10,6 +13,7 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.time.format.DateTimeFormatter;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
@@ -25,8 +29,8 @@ public class TrangChuPanel extends JPanel {
     private static final java.text.NumberFormat MONEY =
             java.text.NumberFormat.getNumberInstance(java.util.Locale.forLanguageTag("vi-VN"));
 
-    private final TrangChuService service = new TrangChuService();
-    private final String maNV;
+    private final TrangChuService service;
+    private final VaiTro vaiTro;
     private final Consumer<String> chonMenu;
     private final JLabel ngay = label("", 12, MUTED, false);
     private final JLabel trangThaiCa = label("Đang tải trạng thái ca...", 12, MUTED, true);
@@ -38,9 +42,14 @@ public class TrangChuPanel extends JPanel {
     private final JPanel danhSachHoaDon = danhSach();
     private SwingWorker<TrangChuService.DuLieuTrangChu, Void> tacVuTai;
 
-    public TrangChuPanel(String maNV, String tenNhanVien, Consumer<String> chonMenu) {
-        this.maNV = maNV;
-        this.chonMenu = chonMenu;
+    /** Nhận cùng phiên đăng nhập với MainFrame để Service tự lấy đúng mã và vai trò. */
+    public TrangChuPanel(AuthService authService, String tenNhanVien, Consumer<String> chonMenu) {
+        Objects.requireNonNull(authService, "Cần phiên đăng nhập để mở Trang chủ.");
+        this.vaiTro = authService.getNhanVienDangNhap()
+                .map(NhanVien::getVaiTro)
+                .orElseThrow(() -> new IllegalStateException("Chưa có vai trò đăng nhập."));
+        this.service = new TrangChuService(authService);
+        this.chonMenu = Objects.requireNonNull(chonMenu);
         setLayout(new BorderLayout());
         setBackground(BG);
 
@@ -81,7 +90,7 @@ public class TrangChuPanel extends JPanel {
         thongBao.setVisible(false);
         tacVuTai = new SwingWorker<>() {
             @Override protected TrangChuService.DuLieuTrangChu doInBackground() {
-                return service.layDuLieuTrangChu(maNV);
+                return service.layDuLieuTrangChu();
             }
             @Override protected void done() {
                 try {
@@ -103,8 +112,11 @@ public class TrangChuPanel extends JPanel {
         JPanel p = trong(new BorderLayout());
         JPanel ten = cot();
         ten.add(label("TI TI PET • WORKSPACE", 10, BLUE, true));
-        ten.add(label("Tổng quan cửa hàng", 27, NAVY, true));
-        ten.add(label("Toàn bộ hoạt động TiTi Pet trong một màn hình", 12, MUTED, false));
+        ten.add(label(vaiTro == VaiTro.THO_SPA ? "Công việc Spa của tôi" : "Tổng quan cửa hàng",
+                27, NAVY, true));
+        ten.add(label(vaiTro == VaiTro.THO_SPA
+                ? "Lịch và dịch vụ được phân công cho bạn"
+                : "Hoạt động TiTi Pet trong một màn hình", 12, MUTED, false));
         p.add(ten, BorderLayout.WEST);
         JPanel benPhai = trong(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         benPhai.add(ngay);
@@ -122,14 +134,18 @@ public class TrangChuPanel extends JPanel {
                 11, new Color(205, 225, 255), true));
         chu.add(label("Chào mừng bạn đến với TiTi Pet 🐾", 23, Color.WHITE, true));
         chu.add(khoangCach(8));
-        chu.add(label("Chủ động lịch Spa, thanh toán nhanh, kiểm soát kho và cập nhật kết quả ca trực",
+        chu.add(label(vaiTro == VaiTro.THO_SPA
+                        ? "Theo dõi lịch và tiến độ những dịch vụ được phân công"
+                        : "Chủ động lịch Spa, thanh toán nhanh, kiểm soát kho và cập nhật kết quả ca trực",
                 12, new Color(221, 235, 255), false));
-        chu.add(label("trên một hệ thống thống nhất.",
-                12, new Color(221, 235, 255), false));
-        JButton moCa = nut("◷ Bắt đầu mở ca làm việc", BLUE, Color.WHITE);
-        moCa.addActionListener(e -> chonMenu.accept(MainFrame.CHOT_CA));
-        chu.add(khoangCach(13));
-        chu.add(moCa);
+        if (vaiTro != VaiTro.THO_SPA) {
+            chu.add(label("trên một hệ thống thống nhất.",
+                    12, new Color(221, 235, 255), false));
+            JButton moCa = nut("◷ Bắt đầu mở ca làm việc", BLUE, Color.WHITE);
+            moCa.addActionListener(e -> chonMenu.accept(MainFrame.CHOT_CA));
+            chu.add(khoangCach(13));
+            chu.add(moCa);
+        }
         p.add(chu, BorderLayout.CENTER);
         JLabel anh = icon("div.hero-art.png", 130);
         p.add(anh, BorderLayout.EAST);
@@ -137,14 +153,21 @@ public class TrangChuPanel extends JPanel {
     }
 
     private JPanel cacTheSoLieu() {
-        JPanel p = trong(new GridLayout(1, 4, 16, 0));
-        String[] tieuDe = {"Tổng thú cưng", "Lịch hẹn hôm nay", "Hóa đơn thanh toán", "Ca Spa đang xử lý"};
-        String[] hinh = {"🐾.png", "📆.png", "🧾.png", "✂.png"};
+        int soThe = vaiTro == VaiTro.THO_SPA ? 3 : 4;
+        JPanel p = trong(new GridLayout(1, soThe, 16, 0));
+        String[] tieuDe = vaiTro == VaiTro.THO_SPA
+                ? new String[]{"Lịch của tôi hôm nay", "Dịch vụ chờ làm", "Dịch vụ đang làm"}
+                : new String[]{"Tổng thú cưng", "Lịch hẹn hôm nay",
+                    vaiTro == VaiTro.THU_NGAN ? "Hóa đơn ca của tôi" : "Hóa đơn thanh toán",
+                    "Ca Spa đang xử lý"};
+        String[] hinh = vaiTro == VaiTro.THO_SPA
+                ? new String[]{"📆.png", "✂.png", "✂.png"}
+                : new String[]{"🐾.png", "📆.png", "🧾.png", "✂.png"};
         Color[] nenIcon = {new Color(232, 241, 255), new Color(255, 243, 222),
                 new Color(227, 248, 243), new Color(242, 234, 255)};
         Color[] mauIcon = {new Color(44, 106, 190), new Color(193, 116, 42),
                 new Color(36, 155, 142), new Color(151, 91, 200)};
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < soThe; i++) {
             JPanel card = theSoLieu(hinh[i]);
             card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
             card.setBorder(new EmptyBorder(20, 22, 20, 22));
@@ -161,10 +184,14 @@ public class TrangChuPanel extends JPanel {
     }
 
     private JPanel lichHomNay() {
-        JPanel p = khung("Lịch phục vụ hôm nay", "Trạng thái đồng bộ giữa quầy và thợ Spa");
-        JButton xem = nut("Xem tất cả →", BLUE, new Color(231, 240, 255));
-        xem.addActionListener(e -> chonMenu.accept(MainFrame.LICH_HEN));
-        ganNutTieuDe(p, xem);
+        JPanel p = khung(vaiTro == VaiTro.THO_SPA ? "Lịch của tôi hôm nay" : "Lịch phục vụ hôm nay",
+                vaiTro == VaiTro.THO_SPA ? "Chỉ những lịch đã phân công cho bạn"
+                        : "Trạng thái đồng bộ giữa quầy và thợ Spa");
+        if (vaiTro != VaiTro.THO_SPA) {
+            JButton xem = nut("Xem tất cả →", BLUE, new Color(231, 240, 255));
+            xem.addActionListener(e -> chonMenu.accept(MainFrame.LICH_HEN));
+            ganNutTieuDe(p, xem);
+        }
         p.add(danhSachLich, BorderLayout.CENTER);
         return p;
     }
@@ -197,7 +224,8 @@ public class TrangChuPanel extends JPanel {
     }
 
     private JPanel hoaDonGanDay() {
-        JPanel p = khung("Hoạt động gần đây", "Các hóa đơn vừa thanh toán");
+        JPanel p = khung("Hoạt động gần đây", vaiTro == VaiTro.THU_NGAN
+                ? "Hóa đơn đã thanh toán trong ca của bạn" : "Các hóa đơn vừa thanh toán");
         // TODO: Nút Xem hóa đơn sẽ nối khi màn hình Hóa đơn / giao dịch được hoàn thiện.
         p.add(danhSachHoaDon, BorderLayout.CENTER);
         return p;
@@ -205,6 +233,16 @@ public class TrangChuPanel extends JPanel {
 
     /** Hai cột theo ảnh mẫu: bên trái rộng hơn để đọc lịch và chứa thao tác nhanh. */
     private JPanel khuNoiDung() {
+        // Thợ Spa không được tạo cả khung kho/hóa đơn; Service cũng không truy vấn chúng.
+        if (vaiTro == VaiTro.THO_SPA) {
+            JPanel congViec = cot();
+            JPanel lich = lichHomNay();
+            lich.setPreferredSize(new Dimension(100, 310));
+            lich.setMaximumSize(new Dimension(Integer.MAX_VALUE, 310));
+            congViec.add(lich);
+            return congViec;
+        }
+
         JPanel trai = cot();
         JPanel lich = lichHomNay();
         lich.setPreferredSize(new Dimension(100, 260));
@@ -246,38 +284,58 @@ public class TrangChuPanel extends JPanel {
     }
 
     private void hienThiDuLieu(TrangChuService.DuLieuTrangChu d) {
+        if (d.vaiTro() != vaiTro) {
+            thongBao.setText("Phiên đăng nhập đã thay đổi. Vui lòng mở lại Trang chủ.");
+            thongBao.setVisible(true);
+            return;
+        }
         ngay.setText("📅 " + d.ngay().format(DATE));
-        trangThaiCa.setText(d.caHienTai().map(c -> "● " +
+        trangThaiCa.setText(vaiTro == VaiTro.THO_SPA ? "● Lịch được phân công"
+                : d.caHienTai().map(c -> "● " +
                 ("DANG_MO".equals(c.trangThai()) ? "Ca đang mở" : "Ca chờ xác nhận"))
                 .orElse("● Chưa mở ca"));
         TrangChuDAO.SoLieu s = d.soLieu();
-        giaTriThe[0].setText(String.valueOf(s.tongThuCung()));
-        giaTriThe[1].setText(String.valueOf(s.lichHenHomNay()));
-        giaTriThe[2].setText(String.valueOf(s.hoaDonDaThanhToan()));
-        giaTriThe[3].setText(String.valueOf(s.dichVuDangLam()));
-        ghiChuThe[0].setText("Hồ sơ đã ghi nhận");
-        ghiChuThe[1].setText(s.lichChoTiepNhan() + " lịch chờ tiếp nhận");
-        ghiChuThe[2].setText(MONEY.format(s.doanhThuHomNay()) + " đ doanh thu");
-        ghiChuThe[3].setText(s.dichVuChoLam() + " dịch vụ chờ làm");
+        if (vaiTro == VaiTro.THO_SPA) {
+            giaTriThe[0].setText(String.valueOf(s.lichHenHomNay()));
+            giaTriThe[1].setText(String.valueOf(s.dichVuChoLam()));
+            giaTriThe[2].setText(String.valueOf(s.dichVuDangLam()));
+            ghiChuThe[0].setText("Lịch được giao hôm nay");
+            ghiChuThe[1].setText("Việc được giao đang chờ");
+            ghiChuThe[2].setText("Việc được giao đang làm");
+        } else {
+            giaTriThe[0].setText(String.valueOf(s.tongThuCung()));
+            giaTriThe[1].setText(String.valueOf(s.lichHenHomNay()));
+            giaTriThe[2].setText(String.valueOf(s.hoaDonDaThanhToan()));
+            giaTriThe[3].setText(String.valueOf(s.dichVuDangLam()));
+            ghiChuThe[0].setText("Hồ sơ đã ghi nhận");
+            ghiChuThe[1].setText(s.lichChoTiepNhan() + " lịch chờ tiếp nhận");
+            ghiChuThe[2].setText(MONEY.format(s.doanhThuHomNay())
+                    + (vaiTro == VaiTro.THU_NGAN ? " đ doanh thu ca" : " đ doanh thu hôm nay"));
+            ghiChuThe[3].setText(s.dichVuChoLam() + " dịch vụ chờ làm");
+        }
 
         danhSachLich.removeAll();
-        if (d.lichPhucVu().isEmpty()) danhSachLich.add(trangThaiRong("🐾.png", "Chưa có lịch hôm nay"));
+        if (d.lichPhucVu().isEmpty()) danhSachLich.add(trangThaiRong("🐾.png",
+                vaiTro == VaiTro.THO_SPA ? "Chưa có lịch được phân công hôm nay"
+                        : "Chưa có lịch hôm nay"));
         for (TrangChuDAO.LichPhucVu lich : d.lichPhucVu()) {
             danhSachLich.add(dong(lich.gioHen().format(TIME) + "  •  " + lich.tenThuCung()
                     + "  /  " + lich.tenKhachHang(), lich.tenDichVu() + "  •  " + lich.trangThai()));
         }
-        danhSachCanhBao.removeAll();
-        if (d.canhBaoKho().isEmpty()) danhSachCanhBao.add(trangThaiRong("✂.png", "Không có cảnh báo kho"));
-        for (TrangChuDAO.CanhBaoKho kho : d.canhBaoKho()) {
-            String ghiChu = "Còn " + kho.soLuongTon() + " sản phẩm";
-            if (kho.hanSuDung() != null) ghiChu += "  •  HSD " + kho.hanSuDung().format(DATE);
-            danhSachCanhBao.add(dong(kho.tenSanPham(), ghiChu));
-        }
-        danhSachHoaDon.removeAll();
-        if (d.hoaDonGanDay().isEmpty()) danhSachHoaDon.add(trangThaiRong("🧾.png", "Chưa có hoạt động gần đây"));
-        for (TrangChuDAO.HoaDonGanDay hd : d.hoaDonGanDay()) {
-            danhSachHoaDon.add(dong(hd.maHoaDon() + "  •  " + hd.tenKhachHang(),
-                    hd.ngayLap().format(DATE) + "  •  " + MONEY.format(hd.tienPhaiThu()) + " đ"));
+        if (vaiTro != VaiTro.THO_SPA) {
+            danhSachCanhBao.removeAll();
+            if (d.canhBaoKho().isEmpty()) danhSachCanhBao.add(trangThaiRong("✂.png", "Không có cảnh báo kho"));
+            for (TrangChuDAO.CanhBaoKho kho : d.canhBaoKho()) {
+                String ghiChu = "Còn " + kho.soLuongTon() + " sản phẩm";
+                if (kho.hanSuDung() != null) ghiChu += "  •  HSD " + kho.hanSuDung().format(DATE);
+                danhSachCanhBao.add(dong(kho.tenSanPham(), ghiChu));
+            }
+            danhSachHoaDon.removeAll();
+            if (d.hoaDonGanDay().isEmpty()) danhSachHoaDon.add(trangThaiRong("🧾.png", "Chưa có hoạt động gần đây"));
+            for (TrangChuDAO.HoaDonGanDay hd : d.hoaDonGanDay()) {
+                danhSachHoaDon.add(dong(hd.maHoaDon() + "  •  " + hd.tenKhachHang(),
+                        hd.ngayLap().format(DATE) + "  •  " + MONEY.format(hd.tienPhaiThu()) + " đ"));
+            }
         }
         revalidate();
         repaint();
