@@ -44,9 +44,13 @@ public final class ConnectDB {
         String user = System.getenv("TITIPET_DB_USERNAME");
         String password = System.getenv("TITIPET_DB_PASSWORD");
 
-        // Cả đăng nhập và Dashboard cần cùng một cấu hình kết nối.
-        if (user == null || user.isBlank() || password == null || password.isBlank()) {
-            throw new SQLException("Cần cấu hình TITIPET_DB_USERNAME và TITIPET_DB_PASSWORD.");
+        // Chỉ dùng cấu hình có sẵn khi chưa đặt cả hai biến môi trường.
+        if ((user == null || user.isBlank()) != (password == null || password.isBlank())) {
+            throw new SQLException("Cần cấu hình đủ TITIPET_DB_USERNAME và TITIPET_DB_PASSWORD.");
+        }
+        if (user == null || user.isBlank()) {
+            user = "sa";
+            password = "Huy16052006@";
         }
         return DriverManager.getConnection(url, user, password);
     }
