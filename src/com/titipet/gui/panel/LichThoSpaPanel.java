@@ -67,19 +67,19 @@ public class LichThoSpaPanel extends JPanel {
         breadcrumb.setBackground(Color.WHITE);
         breadcrumb.setBorder(new EmptyBorder(10, 25, 10, 25));
 
-        JLabel lblBread = new JLabel(
-            "Quản lý cửa hàng   ›   Điều phối & thực hiện Spa"
-        );
-        lblBread.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblBread.setForeground(TEXT);
-
-        breadcrumb.add(lblBread, BorderLayout.WEST);
-
-        JLabel lblUser = new JLabel("Quản lý TiTi Pet");
-        lblUser.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblUser.setForeground(DARK_BLUE);
-
-        breadcrumb.add(lblUser, BorderLayout.EAST);
+//        JLabel lblBread = new JLabel(
+//            "Quản lý cửa hàng   ›   Điều phối & thực hiện Spa"
+//        );
+//        lblBread.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+//        lblBread.setForeground(TEXT);
+//
+//        breadcrumb.add(lblBread, BorderLayout.WEST);
+//
+//        JLabel lblUser = new JLabel("Quản lý TiTi Pet");
+//        lblUser.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+//        lblUser.setForeground(DARK_BLUE);
+//
+//        breadcrumb.add(lblUser, BorderLayout.EAST);
 
         JPanel titlePanel = new JPanel(new BorderLayout());
         titlePanel.setBackground(BG);
@@ -118,7 +118,7 @@ public class LichThoSpaPanel extends JPanel {
         titlePanel.add(titleLeft, BorderLayout.WEST);
         titlePanel.add(date, BorderLayout.EAST);
 
-        p.add(breadcrumb);
+//        p.add(breadcrumb);
         p.add(titlePanel);
 
         return p;
