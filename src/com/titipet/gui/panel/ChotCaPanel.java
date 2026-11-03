@@ -2,6 +2,7 @@
 package com.titipet.gui.panel;
 
 import com.titipet.bus.ChotCaService;
+import com.titipet.gui.HuongDanSuDung;
 import com.titipet.dao.CaLamViecDAO.TongHopCa;
 import com.titipet.dao.PhieuKetCaDAO.PhieuChoDuyet;
 import com.titipet.entity.enums.VaiTro;
@@ -277,7 +278,15 @@ public class ChotCaPanel extends JPanel {
                 )
         );
 
-        badges.add(pill("Hướng dẫn sử dụng", WHITE, NAVY));
+        JButton help = new JButton("ⓘ  Hướng dẫn sử dụng");
+        help.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        help.setForeground(NAVY);
+        help.setBackground(WHITE);
+        help.setFocusPainted(false);
+        help.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        help.putClientProperty("FlatLaf.style", "arc: 10; focusWidth: 0; borderWidth: 0; margin: 8,12,8,12");
+        help.addActionListener(e -> HuongDanSuDung.moTrang(this, "chot-ca"));
+        badges.add(help);
 
         root.add(badges, BorderLayout.EAST);
 

@@ -1,6 +1,7 @@
 package com.titipet.gui.component;
 
 import com.titipet.gui.MainFrame;
+import com.titipet.gui.HuongDanSuDung;
 import com.titipet.util.RoundedPannel;
 import com.titipet.util.RoundedPannelLinear;
 
@@ -86,6 +87,8 @@ public class SidebarPanel extends RoundedPannelLinear {
             themNhom(menu, "QUẢN TRỊ & BÀN GIAO");
         }
         themMuc(menu, MainFrame.THONG_KE, "Báo cáo thống kê", "Báo cáo thống kê", "▥.png");
+        themNhom(menu, "TRỢ GIÚP");
+        themNutHuongDan(menu);
 
         JScrollPane scroll = new JScrollPane(menu);
         scroll.setBorder(BorderFactory.createEmptyBorder());
@@ -126,6 +129,25 @@ public class SidebarPanel extends RoundedPannelLinear {
         menuButtons.put(key, button);
         menuGroup.add(button);
         menu.add(button);
+        menu.add(Box.createVerticalStrut(3));
+    }
+
+    /** Nút trợ giúp độc lập, không làm thay đổi màn hình đang chọn trong sidebar. */
+    private void themNutHuongDan(JPanel menu) {
+        JButton help = new JButton("ⓘ  Hướng dẫn sử dụng");
+        help.setHorizontalAlignment(SwingConstants.LEFT);
+        help.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 13));
+        help.setForeground(Color.WHITE);
+        help.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        help.setAlignmentX(Component.LEFT_ALIGNMENT);
+        help.setPreferredSize(new Dimension(230, 40));
+        help.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        help.putClientProperty("FlatLaf.style",
+                "arc: 12; borderWidth: 0; focusWidth: 0; margin: 8,12,8,12;"
+                + " background: #294F88; hoverBackground: #315D99");
+        help.setToolTipText("Mở hướng dẫn toàn bộ phần mềm bằng trình duyệt");
+        help.addActionListener(event -> HuongDanSuDung.moTrang(this));
+        menu.add(help);
         menu.add(Box.createVerticalStrut(3));
     }
 
