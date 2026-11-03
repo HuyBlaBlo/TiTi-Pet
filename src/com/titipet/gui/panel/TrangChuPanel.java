@@ -34,7 +34,7 @@ public class TrangChuPanel extends JPanel {
     private final Consumer<String> chonMenu;
     private final JLabel ngay = label("", 12, MUTED, false);
     private final JLabel trangThaiCa = label("Đang tải trạng thái ca...", 12, MUTED, true);
-    private final JLabel thongBao = label("", 12, MUTED, false);
+    private final JLabel thongBao = label("", 12, new Color(176, 48, 48), false);
     private final JLabel[] giaTriThe = new JLabel[4];
     private final JLabel[] ghiChuThe = new JLabel[4];
     private final JPanel danhSachLich = danhSach();
@@ -50,6 +50,12 @@ public class TrangChuPanel extends JPanel {
                 .orElseThrow(() -> new IllegalStateException("Chưa có vai trò đăng nhập."));
         this.service = new TrangChuService(authService);
         this.chonMenu = Objects.requireNonNull(chonMenu);
+        // Cả ngày và trạng thái ca dùng ảnh có sẵn, không dùng ký tự làm icon.
+        ngay.setIcon(iconTheoAnh("📆.png", 17).getIcon());
+        ngay.setIconTextGap(6);
+        trangThaiCa.setIcon(iconTheoAnh(vaiTro == VaiTro.THO_SPA
+                ? "✂.png" : "🐾.png", 17).getIcon());
+        trangThaiCa.setIconTextGap(6);
         setLayout(new BorderLayout());
         setBackground(BG);
 
@@ -60,6 +66,9 @@ public class TrangChuPanel extends JPanel {
         JPanel dauTrang = tieuDe();
         dauTrang.setMaximumSize(new Dimension(Integer.MAX_VALUE, 92));
         noiDung.add(dauTrang);
+        // Lỗi tải dữ liệu nằm ngay đầu trang để người dùng thấy dù chưa cuộn xuống.
+        thongBao.setVisible(false);
+        noiDung.add(thongBao);
         noiDung.add(khoangCach(18));
         JPanel chaoMung = banner(tenNhanVien);
         chaoMung.setPreferredSize(new Dimension(100, 200));
@@ -73,13 +82,13 @@ public class TrangChuPanel extends JPanel {
         noiDung.add(khoangCach(18));
         noiDung.add(khuNoiDung());
         noiDung.add(khoangCach(12));
-        thongBao.setVisible(false);
-        noiDung.add(thongBao);
-
         JScrollPane cuon = new JScrollPane(noiDung);
         cuon.setBorder(null);
         cuon.getViewport().setBackground(BG);
         cuon.getVerticalScrollBar().setUnitIncrement(18);
+        // Luôn hiện thanh cuộn để dễ nhận biết còn nội dung phía dưới.
+        cuon.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+        cuon.getVerticalScrollBar().setPreferredSize(new Dimension(10, 0));
         cuon.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         add(cuon, BorderLayout.CENTER);
     }
@@ -100,7 +109,7 @@ public class TrangChuPanel extends JPanel {
                     thongBao.setText("Việc tải dữ liệu đã bị gián đoạn.");
                     thongBao.setVisible(true);
                 } catch (ExecutionException e) {
-                    thongBao.setText("Không tải được Trang chủ: " + e.getCause().getMessage());
+                    thongBao.setText(e.getCause().getMessage());
                     thongBao.setVisible(true);
                 }
             }
@@ -112,7 +121,8 @@ public class TrangChuPanel extends JPanel {
         JPanel p = trong(new BorderLayout());
         JPanel ten = cot();
         ten.add(label("TI TI PET • WORKSPACE", 10, BLUE, true));
-        ten.add(label(vaiTro == VaiTro.THO_SPA ? "Công việc Spa của tôi" : "Tổng quan cửa hàng",
+        ten.add(label(vaiTro == VaiTro.THO_SPA ? "Công việc Spa của tôi"
+                : vaiTro == VaiTro.THU_NGAN ? "Tổng quan ca và lịch hẹn" : "Tổng quan cửa hàng",
                 27, NAVY, true));
         ten.add(label(vaiTro == VaiTro.THO_SPA
                 ? "Lịch và dịch vụ được phân công cho bạn"
@@ -132,7 +142,7 @@ public class TrangChuPanel extends JPanel {
         JPanel chu = cot();
         chu.add(label("GOOD DAY, " + (tenNhanVien == null ? "TI TI PET" : tenNhanVien.toUpperCase()) + "!",
                 11, new Color(205, 225, 255), true));
-        chu.add(label("Chào mừng bạn đến với TiTi Pet 🐾", 23, Color.WHITE, true));
+        chu.add(label("Chào mừng bạn đến với TiTi Pet", 23, Color.WHITE, true));
         chu.add(khoangCach(8));
         chu.add(label(vaiTro == VaiTro.THO_SPA
                         ? "Theo dõi lịch và tiến độ những dịch vụ được phân công"
@@ -141,7 +151,9 @@ public class TrangChuPanel extends JPanel {
         if (vaiTro != VaiTro.THO_SPA) {
             chu.add(label("trên một hệ thống thống nhất.",
                     12, new Color(221, 235, 255), false));
-            JButton moCa = nut("◷ Bắt đầu mở ca làm việc", BLUE, Color.WHITE);
+            JButton moCa = nut("Bắt đầu mở ca làm việc", BLUE, Color.WHITE);
+            moCa.setIcon(iconTheoAnh("📆.png", 19).getIcon());
+            moCa.setIconTextGap(8);
             moCa.addActionListener(e -> chonMenu.accept(MainFrame.CHOT_CA));
             chu.add(khoangCach(13));
             chu.add(moCa);
@@ -159,7 +171,7 @@ public class TrangChuPanel extends JPanel {
                 ? new String[]{"Lịch của tôi hôm nay", "Dịch vụ chờ làm", "Dịch vụ đang làm"}
                 : new String[]{"Tổng thú cưng", "Lịch hẹn hôm nay",
                     vaiTro == VaiTro.THU_NGAN ? "Hóa đơn ca của tôi" : "Hóa đơn thanh toán",
-                    "Ca Spa đang xử lý"};
+                    "Dịch vụ Spa đang làm"};
         String[] hinh = vaiTro == VaiTro.THO_SPA
                 ? new String[]{"📆.png", "✂.png", "✂.png"}
                 : new String[]{"🐾.png", "📆.png", "🧾.png", "✂.png"};
@@ -188,7 +200,9 @@ public class TrangChuPanel extends JPanel {
                 vaiTro == VaiTro.THO_SPA ? "Chỉ những lịch đã phân công cho bạn"
                         : "Trạng thái đồng bộ giữa quầy và thợ Spa");
         if (vaiTro != VaiTro.THO_SPA) {
-            JButton xem = nut("Xem tất cả →", BLUE, new Color(231, 240, 255));
+            JButton xem = nut("Xem tất cả", BLUE, new Color(231, 240, 255));
+            xem.setIcon(iconTheoAnh("📆.png", 16).getIcon());
+            xem.setIconTextGap(6);
             xem.addActionListener(e -> chonMenu.accept(MainFrame.LICH_HEN));
             ganNutTieuDe(p, xem);
         }
@@ -198,10 +212,10 @@ public class TrangChuPanel extends JPanel {
 
     private JPanel canhBao() {
         JPanel p = khung("Cảnh báo vận hành", "Hàng ít tồn hoặc sắp hết hạn");
-        // TODO: Mở nút Chi tiết khi KhoPanel có giao diện hoàn chỉnh.
-        JButton chiTiet = nut("Chi tiết", MUTED, new Color(245, 248, 253));
-        chiTiet.setEnabled(false);
-        chiTiet.setToolTipText("Màn hình Kho đang được xây dựng");
+        JButton chiTiet = nut("Chi tiết", BLUE, new Color(245, 248, 253));
+        chiTiet.setIcon(iconTheoAnh("🛒.png", 16).getIcon());
+        chiTiet.setIconTextGap(6);
+        chiTiet.addActionListener(e -> chonMenu.accept(MainFrame.KHO));
         ganNutTieuDe(p, chiTiet);
         p.add(danhSachCanhBao, BorderLayout.CENTER);
         return p;
@@ -213,11 +227,7 @@ public class TrangChuPanel extends JPanel {
         nut.add(nutDieuHuong("Hồ sơ thú cưng", "🐾.png", MainFrame.THU_CUNG));
         nut.add(nutDieuHuong("Đặt Spa", "📆.png", MainFrame.LICH_HEN));
         nut.add(nutDieuHuong("Bán hàng", "🛒.png", MainFrame.BAN_HANG));
-        // TODO: Bật nút khi panel Hóa đơn / giao dịch có giao diện hoàn chỉnh.
-        JButton xemHoaDon = nutNhanh("Xem hóa đơn", "🧾.png");
-        xemHoaDon.setEnabled(false);
-        xemHoaDon.setToolTipText("Màn hình Hóa đơn đang được xây dựng");
-        nut.add(xemHoaDon);
+        nut.add(nutDieuHuong("Xem hóa đơn", "🧾.png", MainFrame.HOA_DON));
         nut.add(nutDieuHuong("Khách hàng & VIP", "👤.png", MainFrame.KHACH_HANG));
         p.add(nut, BorderLayout.CENTER);
         return p;
@@ -226,7 +236,6 @@ public class TrangChuPanel extends JPanel {
     private JPanel hoaDonGanDay() {
         JPanel p = khung("Hoạt động gần đây", vaiTro == VaiTro.THU_NGAN
                 ? "Hóa đơn đã thanh toán trong ca của bạn" : "Các hóa đơn vừa thanh toán");
-        // TODO: Nút Xem hóa đơn sẽ nối khi màn hình Hóa đơn / giao dịch được hoàn thiện.
         p.add(danhSachHoaDon, BorderLayout.CENTER);
         return p;
     }
@@ -261,8 +270,9 @@ public class TrangChuPanel extends JPanel {
         phai.add(canhBao);
         phai.add(khoangCach(18));
         JPanel hoaDon = hoaDonGanDay();
-        hoaDon.setPreferredSize(new Dimension(100, 160));
-        hoaDon.setMaximumSize(new Dimension(Integer.MAX_VALUE, 160));
+        // Danh sách tải tối đa 5 hóa đơn; 160 px chỉ đủ một dòng và cắt mất phần còn lại.
+        hoaDon.setPreferredSize(new Dimension(100, 370));
+        hoaDon.setMaximumSize(new Dimension(Integer.MAX_VALUE, 370));
         phai.add(hoaDon);
 
         JPanel haiCot = trong(new GridBagLayout());
@@ -278,8 +288,8 @@ public class TrangChuPanel extends JPanel {
         gbc.weightx = 0.4;
         gbc.insets = new Insets(0, 9, 0, 0);
         haiCot.add(phai, gbc);
-        haiCot.setPreferredSize(new Dimension(100, 438));
-        haiCot.setMaximumSize(new Dimension(Integer.MAX_VALUE, 438));
+        haiCot.setPreferredSize(new Dimension(100, 648));
+        haiCot.setMaximumSize(new Dimension(Integer.MAX_VALUE, 648));
         return haiCot;
     }
 
@@ -289,11 +299,11 @@ public class TrangChuPanel extends JPanel {
             thongBao.setVisible(true);
             return;
         }
-        ngay.setText("📅 " + d.ngay().format(DATE));
-        trangThaiCa.setText(vaiTro == VaiTro.THO_SPA ? "● Lịch được phân công"
-                : d.caHienTai().map(c -> "● " +
+        ngay.setText(d.ngay().format(DATE));
+        trangThaiCa.setText(vaiTro == VaiTro.THO_SPA ? "Lịch được phân công"
+                : d.caHienTai().map(c ->
                 ("DANG_MO".equals(c.trangThai()) ? "Ca đang mở" : "Ca chờ xác nhận"))
-                .orElse("● Chưa mở ca"));
+                .orElse("Chưa mở ca"));
         TrangChuDAO.SoLieu s = d.soLieu();
         if (vaiTro == VaiTro.THO_SPA) {
             giaTriThe[0].setText(String.valueOf(s.lichHenHomNay()));
@@ -319,22 +329,23 @@ public class TrangChuPanel extends JPanel {
                 vaiTro == VaiTro.THO_SPA ? "Chưa có lịch được phân công hôm nay"
                         : "Chưa có lịch hôm nay"));
         for (TrangChuDAO.LichPhucVu lich : d.lichPhucVu()) {
-            danhSachLich.add(dong(lich.gioHen().format(TIME) + "  •  " + lich.tenThuCung()
-                    + "  /  " + lich.tenKhachHang(), lich.tenDichVu() + "  •  " + lich.trangThai()));
+            danhSachLich.add(dong(lich.gioHen().format(TIME) + "  |  " + lich.tenThuCung()
+                    + "  /  " + lich.tenKhachHang(), lich.tenDichVu() + "  |  " + lich.trangThai()));
         }
         if (vaiTro != VaiTro.THO_SPA) {
             danhSachCanhBao.removeAll();
             if (d.canhBaoKho().isEmpty()) danhSachCanhBao.add(trangThaiRong("✂.png", "Không có cảnh báo kho"));
             for (TrangChuDAO.CanhBaoKho kho : d.canhBaoKho()) {
-                String ghiChu = "Còn " + kho.soLuongTon() + " sản phẩm";
-                if (kho.hanSuDung() != null) ghiChu += "  •  HSD " + kho.hanSuDung().format(DATE);
+                // soLuongTonKho là số lượng còn lại của mặt hàng này, không phải số loại sản phẩm.
+                String ghiChu = "Tồn kho: " + kho.soLuongTon();
+                if (kho.hanSuDung() != null) ghiChu += "  |  HSD " + kho.hanSuDung().format(DATE);
                 danhSachCanhBao.add(dong(kho.tenSanPham(), ghiChu));
             }
             danhSachHoaDon.removeAll();
             if (d.hoaDonGanDay().isEmpty()) danhSachHoaDon.add(trangThaiRong("🧾.png", "Chưa có hoạt động gần đây"));
             for (TrangChuDAO.HoaDonGanDay hd : d.hoaDonGanDay()) {
-                danhSachHoaDon.add(dong(hd.maHoaDon() + "  •  " + hd.tenKhachHang(),
-                        hd.ngayLap().format(DATE) + "  •  " + MONEY.format(hd.tienPhaiThu()) + " đ"));
+                danhSachHoaDon.add(dong(hd.maHoaDon() + "  |  " + hd.tenKhachHang(),
+                        hd.ngayLap().format(DATE) + "  |  " + MONEY.format(hd.tienPhaiThu()) + " đ"));
             }
         }
         revalidate();
