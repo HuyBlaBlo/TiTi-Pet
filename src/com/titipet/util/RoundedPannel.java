@@ -17,6 +17,11 @@ public class RoundedPannel extends JPanel {
         this(Color.WHITE, 20);
     }
 
+    /**
+     *
+     * Màu sắc: @param backgroundColor
+     * Độ bo góc: @param cornerRadius
+     */
     public RoundedPannel(Color backgroundColor, int cornerRadius) {
         setOpaque(false);
         setBackground(backgroundColor);

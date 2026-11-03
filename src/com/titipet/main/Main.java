@@ -1,66 +1,39 @@
+
 package com.titipet.main;
 
 import com.formdev.flatlaf.FlatLightLaf;
+import com.titipet.bus.AuthService;
 import com.titipet.connectDB.ConnectDB;
-import com.titipet.dao.NhanVienDAO;
-import com.titipet.entity.NhanVien;
+import com.titipet.gui.LoginFrame;
 
-import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
+import javax.swing.*;
 import java.sql.SQLException;
-import java.util.Optional;
 
 public class Main {
 
-    public static void main(String[] args) throws SQLException{
+    public static void main(String[] args) {
         FlatLightLaf.setup();
 
         try {
             ConnectDB.getInstance().connect();
-        } catch (SQLException exception) {
-            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(
+
+        } catch (SQLException e) {
+
+            JOptionPane.showMessageDialog(
                     null,
-                    exception.getMessage(),
-                    "Lỗi kết nối cơ sở dữ liệu",
+                    "Không thể kết nối cơ sở dữ liệu!\n"
+                            + e.getMessage(),
+                    "Lỗi kết nối",
                     JOptionPane.ERROR_MESSAGE
-            ));
+            );
+
             return;
         }
-
         SwingUtilities.invokeLater(() -> {
-            try {
-                if (ConnectDB.getConnection() != null
-                        && !ConnectDB.getConnection().isClosed()) {
-                    JOptionPane.showMessageDialog(
-                            null,
-                            "Kết nối cơ sở dữ liệu thành công!",
-                            "TiTiPet",
-                            JOptionPane.INFORMATION_MESSAGE
-                    );
-                }
-            } catch (SQLException exception) {
-                JOptionPane.showMessageDialog(
-                        null,
-                        exception.getMessage(),
-                        "Lỗi kết nối cơ sở dữ liệu",
-                        JOptionPane.ERROR_MESSAGE
-                );
-            }
+            AuthService authService = new AuthService();
+            LoginFrame loginFrame = new LoginFrame(authService);
+
+            loginFrame.setVisible(true);
         });
-
-
-        NhanVienDAO dao = new NhanVienDAO();
-
-        Optional<NhanVien> ketQua =
-                dao.timTheoTenDangNhap("admin");
-
-        if (ketQua.isPresent()) {
-            NhanVien nv = ketQua.get();
-
-            System.out.println("Tên: " + nv.getHoTen());
-            System.out.println("Vai trò: " + nv.getVaiTro());
-        } else {
-            System.out.println("Không tìm thấy nhân viên!");
-        }
     }
 }
