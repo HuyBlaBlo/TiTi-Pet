@@ -65,7 +65,8 @@ public class TrangChuService {
                 case THO_SPA -> layChoThoSpa(homNay, nhanVien.getMaNV());
             };
         } catch (SQLException e) {
-            throw new IllegalStateException("Không tải được dữ liệu Trang chủ.", e);
+            // Giữ nguyên lỗi SQL để giao diện báo rõ nguyên nhân khi thiếu kết nối/cột dữ liệu.
+            throw new IllegalStateException("Không tải được dữ liệu Trang chủ: " + e.getMessage(), e);
         }
     }
 
