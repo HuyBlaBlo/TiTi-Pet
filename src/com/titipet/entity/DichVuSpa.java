@@ -11,7 +11,6 @@ public class DichVuSpa {
     private BigDecimal thueSuat;
     private boolean giaDaBaoGomThue;
     private LoaiThuCungApDung loaiThuCungApDung;
-    private int thoiLuongPhut;
     private boolean dangHoatDong;
 
     public DichVuSpa() {
@@ -74,24 +73,13 @@ public class DichVuSpa {
     public void setLoaiThuCungApDung(LoaiThuCungApDung loaiThuCungApDung) {
         this.loaiThuCungApDung = loaiThuCungApDung;
     }
-	public boolean isDangHoatDong() {
+
+    public boolean isDangHoatDong() {
         return dangHoatDong;
     }
 
     public void setDangHoatDong(boolean dangHoatDong) {
         this.dangHoatDong = dangHoatDong;
-    }
-    public int getThoiLuongPhut() {
-        return thoiLuongPhut;
-    }
-
-    public void setThoiLuongPhut(int thoiLuongPhut) {
-        if (thoiLuongPhut <= 0) {
-            throw new IllegalArgumentException(
-                "Thời lượng dịch vụ phải lớn hơn 0 phút."
-            );
-        }
-        this.thoiLuongPhut = thoiLuongPhut;
     }
 
     @Override

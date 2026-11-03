@@ -1,15 +1,19 @@
-﻿/*
- TiTi Pet | 01 Schema chinh (SQL Server 2012+)
- 14 bang cot loi (theo bao cao Nhom 06) + 2 bang mo rong DoiTra, LichSuNhapKho.
- 2 views bao cao, FK, indexes va stored procedure chi doc.
- - Cai dat MOI: ket noi SSMS va chay tren SQL Server.
- - Database mac dinh: TiTiPetDB. MUON TAO DB TEST, thay DONG CREATE DATABASE
-   va DONG USE TiTiPetDB trong file bang TiTiPetDB_FULL_TEST (xem README).
- - KHONG drop data / khong sua ma san pham / khong seed du lieu trong file nay.
- - Neu database dang co du lieu, backup truoc; danh gia schema cu truoc khi nang cap.
- - Khong dung script nay de tu dong dong bo tat ca bien the CSDL da duoc chinh sua thu cong.
- - Khong luu tai khoan/mat khau SQL trong file SQL.
+/* TiTi Pet - FRESH DATABASE SCHEMA. Without LoHang, BangGiaSpa and SanPham.hanSuDung.
+   Back up an existing database; for existing installations use 00_NANG_CAP_XOA_HAN_SU_DUNG_SANPHAM.sql instead.
+   Does not create any default password.
 */
+
+
+-- ========= 01_create_tables.sql =========
+/* ============================================================================
+   TiTi Pet - COMBINED SQL Server script (FIX V2)
+   14 core tables + 2 views + 23 FK + validation, safe to rerun where schema matches.
+   ============================================================================ */
+
+/* ============================================================================
+   TiTi Pet - SQL SERVER schema, based on Nhom06_REPORT_ApplicationDevelopment[v3]
+   14 core entities: no batch table and no Spa price table. SQL Server 2008 R2+ syntax; test on your server version.
+   ============================================================================ */
 SET NOCOUNT ON;
 GO
 IF DB_ID(N'TiTiPetDB') IS NULL
@@ -64,12 +68,10 @@ BEGIN
         thueSuat            DECIMAL(5,2)      NOT NULL CONSTRAINT DF_DichVuSpa_Thue DEFAULT (0),
         giaDaBaoGomThue     BIT               NOT NULL CONSTRAINT DF_DichVuSpa_GiaThue DEFAULT (0),
         loaiThuCungApDung   VARCHAR(10)       NOT NULL,
-        thoiLuongPhut       INT               NOT NULL CONSTRAINT DF_DichVuSpa_ThoiLuong DEFAULT (60),
         dangHoatDong        BIT               NOT NULL CONSTRAINT DF_DichVuSpa_Active DEFAULT (1),
         CONSTRAINT PK_DichVuSpa PRIMARY KEY (maDichVu),
         CONSTRAINT CK_DichVuSpa_DonGia CHECK (donGiaCoBan >= 0),
         CONSTRAINT CK_DichVuSpa_Thue CHECK (thueSuat BETWEEN 0 AND 100),
-        CONSTRAINT CK_DichVuSpa_ThoiLuong CHECK (thoiLuongPhut > 0),
         CONSTRAINT CK_DichVuSpa_Loai CHECK (loaiThuCungApDung IN ('CHO','MEO','CA_HAI'))
     );
 END;
@@ -325,20 +327,6 @@ BEGIN
 END;
 GO
 
--- Schema compat for DB created before duration and import price were added.
-IF COL_LENGTH(N'dbo.DichVuSpa', N'thoiLuongPhut') IS NULL
-    EXEC(N'ALTER TABLE dbo.DichVuSpa ADD thoiLuongPhut INT NOT NULL CONSTRAINT DF_DichVuSpa_ThoiLuong DEFAULT (60) WITH VALUES;');
-GO
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE parent_object_id=OBJECT_ID(N'dbo.DichVuSpa') AND name=N'CK_DichVuSpa_ThoiLuong')
-    ALTER TABLE dbo.DichVuSpa WITH CHECK ADD CONSTRAINT CK_DichVuSpa_ThoiLuong CHECK (thoiLuongPhut > 0);
-GO
-IF COL_LENGTH(N'dbo.SanPham', N'giaNhap') IS NULL
-    EXEC(N'ALTER TABLE dbo.SanPham ADD giaNhap DECIMAL(18,2) NOT NULL CONSTRAINT DF_SanPham_GiaNhap DEFAULT (0) WITH VALUES;');
-GO
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE parent_object_id=OBJECT_ID(N'dbo.SanPham') AND name=N'CK_SanPham_GiaNhap')
-    ALTER TABLE dbo.SanPham WITH CHECK ADD CONSTRAINT CK_SanPham_GiaNhap CHECK (giaNhap >= 0);
-GO
-
 -- Indexes and derived views for operational queries.
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'dbo.SanPham') AND name=N'UX_SanPham_MaVach')
     CREATE UNIQUE INDEX UX_SanPham_MaVach ON dbo.SanPham(maVach) WHERE maVach IS NOT NULL;
@@ -393,18 +381,19 @@ JOIN dbo.HoaDon AS hd ON hd.maKH = kh.maKH AND hd.trangThai = 'DA_THANH_TOAN'
 GROUP BY kh.maKH, kh.hoTen, YEAR(hd.ngayLap);
 GO
 
-PRINT N'14 core tables and 2 views ready.';
+PRINT N'01: created/kept 14 core tables, 2 views and indexes. Run 02 next.';
 GO
 GO
 
--- ========= FOREIGN KEYS (included in this same schema file) =========
+-- ========= 02_constraints.sql =========
 /* ============================================================================
    TiTi Pet: add FOREIGN KEY relationships in SQL Server.
    SAFE: does NOT delete data, does NOT turn off FK validation.
    Important for existing tables: remove orphan data before running.
    Run after 01_Tao_CSDL_TiTiPet.sql.
    ============================================================================ */
--- The DB is already selected at the top. Do not switch connections mid-script.
+USE [TiTiPetDB];
+GO
 SET NOCOUNT ON;
 GO
 
@@ -479,137 +468,143 @@ IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name=N'FK_PhieuKetCa_QuanLyD
     ALTER TABLE dbo.PhieuKetCa WITH CHECK ADD CONSTRAINT FK_PhieuKetCa_QuanLyDuyet FOREIGN KEY (maNVQuanLyDuyet) REFERENCES dbo.NhanVien(maNV);
 GO
 
-
--- Mo rong phuc vu UC002: thong tin doi/tra, luu vet tien hoan va ca doi soat.
-IF OBJECT_ID(N'dbo.DoiTra', N'U') IS NULL
-BEGIN
-    CREATE TABLE dbo.DoiTra (
-        maDoiTra VARCHAR(20) NOT NULL CONSTRAINT PK_DoiTra PRIMARY KEY,
-        maHoaDon VARCHAR(30) NOT NULL,
-        maSanPhamCu VARCHAR(20) NOT NULL,
-        maSanPhamMoi VARCHAR(20) NULL,
-        maNV VARCHAR(20) NOT NULL,
-        chenhLech DECIMAL(18,2) NOT NULL CONSTRAINT DF_DoiTra_ChenhLech DEFAULT (0),
-        ngayDoi DATETIME2(0) NOT NULL CONSTRAINT DF_DoiTra_Ngay DEFAULT SYSDATETIME(),
-        ghiChu NVARCHAR(1000) NULL,
-        loaiXuLy VARCHAR(4) NOT NULL CONSTRAINT DF_DoiTra_Loai DEFAULT 'DOI',
-        tienHoan DECIMAL(18,2) NOT NULL CONSTRAINT DF_DoiTra_TienHoan DEFAULT (0),
-        maCa VARCHAR(20) NULL,
-        maHoaDonDieuChinh VARCHAR(30) NULL,
-        phuongThucXuLy VARCHAR(16) NULL,
-        soLuongXuLy INT NOT NULL CONSTRAINT DF_DoiTra_SoLuong DEFAULT (1),
-        CONSTRAINT UQ_DoiTra_LanDoi UNIQUE (maHoaDon, maSanPhamCu),
-        CONSTRAINT CK_DoiTra_ThamSo CHECK (chenhLech >= 0 AND tienHoan >= 0 AND soLuongXuLy > 0),
-        CONSTRAINT CK_DoiTra_Loai CHECK (loaiXuLy IN ('DOI','TRA')),
-        CONSTRAINT CK_DoiTra_PhuongThuc CHECK (phuongThucXuLy IS NULL OR phuongThucXuLy IN ('TIEN_MAT','CHUYEN_KHOAN','QUA_SAN'))
-    );
-END;
-GO
--- Compatibility upgrade: old exchange table has no return fields.
-IF COL_LENGTH(N'dbo.DoiTra', N'loaiXuLy') IS NULL
-    EXEC(N'ALTER TABLE dbo.DoiTra ADD loaiXuLy VARCHAR(4) NOT NULL CONSTRAINT DF_DoiTra_Loai DEFAULT (''DOI'') WITH VALUES;');
-GO
-IF COL_LENGTH(N'dbo.DoiTra', N'tienHoan') IS NULL
-    EXEC(N'ALTER TABLE dbo.DoiTra ADD tienHoan DECIMAL(18,2) NOT NULL CONSTRAINT DF_DoiTra_TienHoan DEFAULT (0) WITH VALUES;');
-GO
-IF COL_LENGTH(N'dbo.DoiTra', N'maCa') IS NULL
-    ALTER TABLE dbo.DoiTra ADD maCa VARCHAR(20) NULL;
-GO
-IF COL_LENGTH(N'dbo.DoiTra', N'maHoaDonDieuChinh') IS NULL
-    ALTER TABLE dbo.DoiTra ADD maHoaDonDieuChinh VARCHAR(30) NULL;
-GO
-IF COL_LENGTH(N'dbo.DoiTra', N'phuongThucXuLy') IS NULL
-    ALTER TABLE dbo.DoiTra ADD phuongThucXuLy VARCHAR(16) NULL;
-GO
-IF COL_LENGTH(N'dbo.DoiTra', N'soLuongXuLy') IS NULL
-    EXEC(N'ALTER TABLE dbo.DoiTra ADD soLuongXuLy INT NOT NULL CONSTRAINT DF_DoiTra_SoLuong DEFAULT (1) WITH VALUES;');
-GO
--- Old DoiTra may have an FK on replacement product: drop/recreate it ATOMICALLY
--- before changing NOT NULL -> NULL; never change existing row values.
-IF EXISTS (SELECT 1 FROM sys.columns
-    WHERE object_id=OBJECT_ID(N'dbo.DoiTra') AND name=N'maSanPhamMoi' AND is_nullable=0)
-BEGIN
-    BEGIN TRY
-        BEGIN TRANSACTION;
-        IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id=OBJECT_ID(N'dbo.DoiTra') AND name=N'FK_DoiTra_SP_Moi')
-            ALTER TABLE dbo.DoiTra DROP CONSTRAINT FK_DoiTra_SP_Moi;
-        ALTER TABLE dbo.DoiTra ALTER COLUMN maSanPhamMoi VARCHAR(20) NULL;
-        ALTER TABLE dbo.DoiTra WITH CHECK ADD CONSTRAINT FK_DoiTra_SP_Moi
-            FOREIGN KEY (maSanPhamMoi) REFERENCES dbo.SanPham(maSanPham);
-        COMMIT TRANSACTION;
-    END TRY
-    BEGIN CATCH
-        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
-        THROW;
-    END CATCH;
-END;
-GO
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE parent_object_id=OBJECT_ID(N'dbo.DoiTra') AND name=N'CK_DoiTra_ThamSo')
-    ALTER TABLE dbo.DoiTra WITH CHECK ADD CONSTRAINT CK_DoiTra_ThamSo CHECK (chenhLech>=0 AND tienHoan>=0 AND soLuongXuLy>0);
-GO
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE parent_object_id=OBJECT_ID(N'dbo.DoiTra') AND name=N'CK_DoiTra_Loai')
-    ALTER TABLE dbo.DoiTra WITH CHECK ADD CONSTRAINT CK_DoiTra_Loai CHECK (loaiXuLy IN ('DOI','TRA'));
-GO
-IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id=OBJECT_ID(N'dbo.DoiTra') AND name=N'FK_DoiTra_HD')
-    ALTER TABLE dbo.DoiTra WITH CHECK ADD CONSTRAINT FK_DoiTra_HD FOREIGN KEY (maHoaDon) REFERENCES dbo.HoaDon(maHoaDon);
-GO
-IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id=OBJECT_ID(N'dbo.DoiTra') AND name=N'FK_DoiTra_SP_Cu')
-    ALTER TABLE dbo.DoiTra WITH CHECK ADD CONSTRAINT FK_DoiTra_SP_Cu FOREIGN KEY (maSanPhamCu) REFERENCES dbo.SanPham(maSanPham);
-GO
-IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id=OBJECT_ID(N'dbo.DoiTra') AND name=N'FK_DoiTra_SP_Moi')
-    ALTER TABLE dbo.DoiTra WITH CHECK ADD CONSTRAINT FK_DoiTra_SP_Moi FOREIGN KEY (maSanPhamMoi) REFERENCES dbo.SanPham(maSanPham);
-GO
-IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id=OBJECT_ID(N'dbo.DoiTra') AND name=N'FK_DoiTra_NV')
-    ALTER TABLE dbo.DoiTra WITH CHECK ADD CONSTRAINT FK_DoiTra_NV FOREIGN KEY (maNV) REFERENCES dbo.NhanVien(maNV);
-GO
-IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id=OBJECT_ID(N'dbo.DoiTra') AND name=N'FK_DoiTra_Ca')
-    ALTER TABLE dbo.DoiTra WITH CHECK ADD CONSTRAINT FK_DoiTra_Ca FOREIGN KEY (maCa) REFERENCES dbo.CaLamViec(maCa);
-GO
-IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id=OBJECT_ID(N'dbo.DoiTra') AND name=N'FK_DoiTra_HoaDonDieuChinh')
-    ALTER TABLE dbo.DoiTra WITH CHECK ADD CONSTRAINT FK_DoiTra_HoaDonDieuChinh FOREIGN KEY (maHoaDonDieuChinh) REFERENCES dbo.HoaDon(maHoaDon);
+PRINT N'02: FK connections finished; use 03_KiemTra_LienKet.sql to verify.';
 GO
 
--- Mo rong phuc vu UC nhap kho: mot dong nhap, gia nhap va han ThucAn (neu co).
-IF OBJECT_ID(N'dbo.LichSuNhapKho', N'U') IS NULL
-BEGIN
-    CREATE TABLE dbo.LichSuNhapKho (
-        maLichSu BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_LichSuNhapKho PRIMARY KEY,
-        maSanPham VARCHAR(20) NOT NULL,
-        soLuongNhap INT NOT NULL,
-        giaNhap DECIMAL(18,2) NOT NULL,
-        hanSuDungMoi DATE NULL,
-        ngayNhap DATETIME2(0) NOT NULL CONSTRAINT DF_LSNK_NgayNhap DEFAULT SYSDATETIME(),
-        ghiChu NVARCHAR(500) NULL,
-        CONSTRAINT CK_LSNK_SoLuong CHECK (soLuongNhap > 0 AND giaNhap >= 0),
-        CONSTRAINT FK_LSNK_SanPham FOREIGN KEY (maSanPham) REFERENCES dbo.SanPham(maSanPham)
-    );
-END;
+
+/* Run after scripts 01 and 02. Safe, read-only tests. */
+USE [TiTiPetDB];
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'dbo.HoaDon') AND name=N'IX_HoaDon_NgayLap')
-    CREATE INDEX IX_HoaDon_NgayLap ON dbo.HoaDon(ngayLap DESC) INCLUDE (maKH, maNV, trangThai, tienPhaiThu);
+SELECT DB_NAME() AS DatabaseName, COUNT(*) AS SoBangNghiepVu
+FROM sys.tables WHERE schema_id = SCHEMA_ID('dbo') AND name IN (
+ N'KhachHang', N'NhanVien', N'ThuCung', N'DichVuSpa', N'SanPham', N'CaLamViec',
+ N'PhuKien', N'ThucAn', N'KhuyenMai', N'LichHen',
+ N'HoaDon', N'ChiTietHoaDon_SanPham', N'ChiTietHoaDon_DichVu', N'PhieuKetCa');
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'dbo.DoiTra') AND name=N'IX_DoiTra_MaCa')
-    CREATE INDEX IX_DoiTra_MaCa ON dbo.DoiTra(maCa, loaiXuLy);
+SELECT COUNT(*) AS SoKhoaNgoai FROM sys.foreign_keys
+WHERE OBJECT_SCHEMA_NAME(parent_object_id) = N'dbo'
+AND is_disabled = 0 AND is_not_trusted = 0;
+GO
+SELECT fk.name AS KhoaNgoai,
+       OBJECT_SCHEMA_NAME(fk.parent_object_id) + '.' + OBJECT_NAME(fk.parent_object_id) AS BangCon,
+       pc.name AS CotCon,
+       OBJECT_SCHEMA_NAME(fk.referenced_object_id) + '.' + OBJECT_NAME(fk.referenced_object_id) AS BangCha,
+       rc.name AS CotCha,
+       fk.is_disabled AS BiTat, fk.is_not_trusted AS ChuaKiemTra
+FROM sys.foreign_keys AS fk
+JOIN sys.foreign_key_columns AS fkc ON fkc.constraint_object_id = fk.object_id
+JOIN sys.columns AS pc ON pc.object_id=fkc.parent_object_id AND pc.column_id=fkc.parent_column_id
+JOIN sys.columns AS rc ON rc.object_id=fkc.referenced_object_id AND rc.column_id=fkc.referenced_column_id
+ORDER BY BangCon, KhoaNgoai, fkc.constraint_column_id;
 GO
 
--- Thong ke doanh thu theo ca; KHONG co trigger tru kho/tich diem lan hai.
-IF OBJECT_ID(N'dbo.usp_DoanhThuTheoCa', N'P') IS NULL
-    EXEC(N'CREATE PROCEDURE dbo.usp_DoanhThuTheoCa AS SELECT 1;');
+-- Sample joins. Return 0 rows until sample/real data has been inserted.
+SELECT TOP 20 kh.maKH, kh.hoTen, tc.maThuCung, tc.tenThuCung
+FROM dbo.KhachHang AS kh LEFT JOIN dbo.ThuCung AS tc ON tc.maKH=kh.maKH;
+GO
+SELECT TOP 20 lh.maLichHen, kh.hoTen, tc.tenThuCung, dv.tenDichVu, lh.thoiGianHen, nv.hoTen AS thoSpa
+FROM dbo.LichHen AS lh
+JOIN dbo.KhachHang AS kh ON kh.maKH=lh.maKH
+JOIN dbo.ThuCung AS tc ON tc.maThuCung=lh.maThuCung
+JOIN dbo.DichVuSpa AS dv ON dv.maDichVu=lh.maDichVu
+LEFT JOIN dbo.NhanVien AS nv ON nv.maNV=lh.maNVThoSpa;
+GO
+SELECT TOP 20 hd.maHoaDon, hd.ngayLap, kh.hoTen AS khachHang, nv.hoTen AS thuNgan,
+       hd.trangThai, hd.tienPhaiThu
+FROM dbo.HoaDon AS hd
+JOIN dbo.KhachHang AS kh ON kh.maKH=hd.maKH
+JOIN dbo.NhanVien AS nv ON nv.maNV=hd.maNV;
+GO
+IF OBJECT_ID(N'dbo.v_TonKhoSanPham', N'V') IS NULL
+    PRINT N'THIEU VIEW dbo.v_TonKhoSanPham - hay chay 00_SUA_LOI_DATABASE_DA_TAO.sql';
+ELSE
+    EXEC(N'SELECT TOP 20 * FROM dbo.v_TonKhoSanPham ORDER BY tenSanPham;');
+GO
+IF OBJECT_ID(N'dbo.v_ChiTieuNamKhachHang', N'V') IS NULL
+    PRINT N'THIEU VIEW dbo.v_ChiTieuNamKhachHang - hay chay 00_SUA_LOI_DATABASE_DA_TAO.sql';
+ELSE
+    EXEC(N'SELECT TOP 20 * FROM dbo.v_ChiTieuNamKhachHang ORDER BY nam DESC, tongChiTieuNam DESC;');
+GO
+-- Optional metadata view for SQL Server Management Studio Database Diagram:
+-- SSMS > Database > Database Diagrams > New Database Diagram > select 15 tables.
+GO
+
+-- ========= 05_extension_exchange.sql =========
+USE [TiTiPetDB];
+GO
+IF OBJECT_ID(N'dbo.DoiTra',N'U') IS NULL
+BEGIN
+  CREATE TABLE dbo.DoiTra (
+    maDoiTra VARCHAR(20) NOT NULL PRIMARY KEY,
+    maHoaDon VARCHAR(30) NOT NULL,
+    maSanPhamCu VARCHAR(20) NOT NULL,
+    maSanPhamMoi VARCHAR(20) NOT NULL,
+    maNV VARCHAR(20) NOT NULL,
+    chenhLech DECIMAL(18,2) NOT NULL CHECK (chenhLech>=0),
+    ngayDoi DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
+    ghiChu NVARCHAR(1000) NULL,
+    CONSTRAINT UQ_DoiTra_LanDoi UNIQUE (maHoaDon,maSanPhamCu),
+    CONSTRAINT FK_DoiTra_HD FOREIGN KEY (maHoaDon) REFERENCES dbo.HoaDon(maHoaDon),
+    CONSTRAINT FK_DoiTra_SP_Cu FOREIGN KEY (maSanPhamCu) REFERENCES dbo.SanPham(maSanPham),
+    CONSTRAINT FK_DoiTra_SP_Moi FOREIGN KEY (maSanPhamMoi) REFERENCES dbo.SanPham(maSanPham),
+    CONSTRAINT FK_DoiTra_NV FOREIGN KEY (maNV) REFERENCES dbo.NhanVien(maNV)
+  );
+END;
+GO
+GO
+
+-- ========= 04_procedures_triggers.sql =========
+/* Reporting-only stored procedure; inventory & points are updated atomically by Java service.
+   DO NOT add a second decrement trigger (it would double-debit stock). */
+USE TiTiPetDB;
+GO
+IF OBJECT_ID(N'dbo.usp_DoanhThuTheoCa',N'P') IS NULL
+ EXEC(N'CREATE PROCEDURE dbo.usp_DoanhThuTheoCa AS SELECT 1;');
 GO
 ALTER PROCEDURE dbo.usp_DoanhThuTheoCa @maCa VARCHAR(20)
 AS
 BEGIN
-    SET NOCOUNT ON;
-    SELECT maCa, phuongThucThanhToan, COUNT(*) AS soHoaDon,
-           SUM(tienPhaiThu) AS doanhThu
-    FROM dbo.HoaDon
-    WHERE maCa=@maCa AND trangThai='DA_THANH_TOAN'
-    GROUP BY maCa, phuongThucThanhToan;
+ SET NOCOUNT ON;
+ SELECT hd.maCa,hd.phuongThucThanhToan,COUNT(*) AS soHoaDon,
+ SUM(hd.tienPhaiThu) AS doanhThu
+ FROM dbo.HoaDon hd WHERE hd.maCa=@maCa AND hd.trangThai='DA_THANH_TOAN'
+ GROUP BY hd.maCa,hd.phuongThucThanhToan;
 END;
 GO
+GO
 
-PRINT N'TiTi Pet schema ready: 14 core tables, extension DoiTra / LichSuNhapKho, 2 views, FK and reporting procedure.';
-SELECT DB_NAME() AS databaseName,
-       (SELECT COUNT(*) FROM sys.tables WHERE schema_id=SCHEMA_ID('dbo')) AS soBang,
-       (SELECT COUNT(*) FROM sys.views WHERE schema_id=SCHEMA_ID('dbo')) AS soView;
+-- ========= 06_verify.sql =========
+USE TiTiPetDB;
+GO
+SELECT COUNT(*) AS SoBang FROM sys.tables WHERE schema_id=SCHEMA_ID('dbo');
+SELECT COUNT(*) AS SoFK FROM sys.foreign_keys WHERE OBJECT_SCHEMA_NAME(parent_object_id)='dbo' AND is_disabled=0 AND is_not_trusted=0;
+SELECT name AS TenView FROM sys.views WHERE schema_id=SCHEMA_ID('dbo');
+SELECT TOP 20 * FROM dbo.v_TonKhoSanPham;
+GO
+
+SELECT TOP 20 sp.maSanPham, sp.tenSanPham, sp.soLuongTonKho, sp.nguongCanhBaoTon,
+    ta.hanSuDung AS hanSuDungThucAn
+FROM dbo.SanPham sp LEFT JOIN dbo.ThucAn ta ON sp.maSanPham=ta.maSanPham
+ORDER BY sp.tenSanPham;
+GO
+GO
+
+-- ========= 11_KIEM_TRA_SAU_KHI_BO_HSD_SANPHAM.sql =========
+USE [TiTiPetDB];
+GO
+SELECT
+  CASE WHEN COL_LENGTH(N'dbo.SanPham',N'hanSuDung') IS NULL THEN N'KHONG CON' ELSE N'VAN CON' END AS SanPham_HSD,
+  CASE WHEN COL_LENGTH(N'dbo.ThucAn',N'hanSuDung') IS NOT NULL THEN N'CON' ELSE N'THIEU' END AS ThucAn_HSD,
+  CASE WHEN OBJECT_ID(N'dbo.LoHang',N'U') IS NULL THEN N'KHONG CON' ELSE N'CON' END AS LoHang,
+  CASE WHEN OBJECT_ID(N'dbo.BangGiaSpa',N'U') IS NULL THEN N'KHONG CON' ELSE N'CON' END AS BangGiaSpa,
+  (SELECT COUNT(*) FROM sys.tables WHERE schema_id=SCHEMA_ID(N'dbo') AND name IN
+    (N'KhachHang',N'NhanVien',N'ThuCung',N'DichVuSpa',N'SanPham',N'CaLamViec',N'PhuKien',N'ThucAn',N'KhuyenMai',N'LichHen',N'HoaDon',N'ChiTietHoaDon_SanPham',N'ChiTietHoaDon_DichVu',N'PhieuKetCa')) AS SoBangCotLoi;
+GO
+SELECT TOP 50 sp.maSanPham,sp.tenSanPham,sp.loaiSanPham,sp.soLuongTonKho,
+  ta.hanSuDung AS HanSuDungChiCuaThucAn,ta.trongLuong
+FROM dbo.SanPham sp LEFT JOIN dbo.ThucAn ta ON sp.maSanPham=ta.maSanPham
+ORDER BY sp.tenSanPham;
+GO
+SELECT TOP 30 * FROM dbo.v_TonKhoSanPham ORDER BY tenSanPham;
+GO
 GO
