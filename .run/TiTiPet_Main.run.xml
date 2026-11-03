@@ -1,0 +1,13 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="TiTiPet - Main" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="com.titipet.main.Main" />
+    <module name="TiTiPet" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <envs>
+      <env name="_JAVA_AWT_WM_NONREPARENTING" value="1" />
+    </envs>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

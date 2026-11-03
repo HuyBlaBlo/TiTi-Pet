@@ -56,3 +56,11 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
+
+.run/
+# AI tools
+.agents/
+.codex/
+
+# AWS local configuration
+.aws/
