@@ -11,7 +11,7 @@ import com.titipet.gui.dialog.ThemSanPhamDialog;
 import com.titipet.gui.dialog.CapNhatSanPhamDialog;
 import com.titipet.gui.dialog.LichSuNhapKhoDialog;
 import com.titipet.util.RoundedPannel;
-
+import com.titipet.gui.HuongDanSuDung;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;

@@ -64,3 +64,7 @@ $RECYCLE.BIN/
 
 # AWS local configuration
 .aws/.temp-*
+
+# Database credentials local to each machine
+/config/db.properties
+/config/db.properties.local

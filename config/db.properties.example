@@ -1,0 +1,7 @@
+# TiTi Pet - tai khoan SQL Server chi cau hinh tren may ca nhan
+# Sao chep file nay thanh db.properties, khong push file co mat khau
+# Database luon la TiTiPetDB, khong can khai bao lai
+host=localhost
+port=14333
+username=
+password=
