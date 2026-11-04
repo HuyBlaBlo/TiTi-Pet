@@ -9,7 +9,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Truy xuất khách hàng cho chức năng chọn khách của POS. */
+
 public class BanHangKhachHangDAO {
     public List<KhachHangBanHang> timKhachHang(String tuKhoa) throws SQLException {
         Connection con = ConnectDB.getConnection();

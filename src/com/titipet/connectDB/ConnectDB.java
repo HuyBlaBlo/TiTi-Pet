@@ -12,7 +12,7 @@ import java.util.Properties;
 
 /**
  * Một nguồn cấu hình kết nối duy nhất cho tất cả DAO của TiTi Pet.
- * Không tạo database mới: mọi kết nối đều mở đúng TiTiPetDB.
+ * Mọi kết nối đều mở đúng TiTiPetDB.
  * Cấu hình không chứa mật khẩu trong mã nguồn.
  */
 public final class ConnectDB {
