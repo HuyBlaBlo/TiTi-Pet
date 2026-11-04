@@ -69,7 +69,6 @@ public class LichHenDAO {
              ORDER BY lh.thoiGianHen ASC
              """;
         List<LichHen> ds = new ArrayList<>();
-        System.out.println(SQL_SELECT_LICH_HEN);
         try (PreparedStatement ps = getActiveConnection().prepareStatement(sql)) {
             ps.setTimestamp(1, Timestamp.valueOf(ngay.atStartOfDay()));
             ps.setTimestamp(2, Timestamp.valueOf(ngay.plusDays(1).atStartOfDay()));
@@ -193,7 +192,7 @@ public class LichHenDAO {
             String sqlKiemTra = """
                 SELECT thoiGianHen, soLanDoiLich
                 FROM dbo.LichHen WITH (UPDLOCK, HOLDLOCK)
-                WHERE maLichHen = ? AND trangThai <> 'HUY'
+                WHERE maLichHen = ? AND trangThai = 'CHO_TIEP_NHAN'
                 """;
 
             LocalDateTime thoiGianHenCu;
@@ -249,7 +248,7 @@ public class LichHenDAO {
                     ghiChu = ?,
                     soLanDoiLich = soLanDoiLich + 1
                 WHERE maLichHen = ?
-                  AND trangThai <> 'HUY'
+                  AND trangThai = 'CHO_TIEP_NHAN'
                   AND soLanDoiLich = 0
                 """;
 
@@ -304,7 +303,15 @@ public class LichHenDAO {
     }
 
     public boolean huyLichHen(String maLichHen) throws SQLException {
-        return capNhatTrangThai(maLichHen, TrangThaiLichHen.DA_HUY);
+        if (maLichHen == null || maLichHen.isBlank())
+            throw new IllegalArgumentException("Vui lòng chọn mã lịch cần hủy.");
+        // Không được hủy lịch đã được thanh toán và chuyển cho thợ.
+        String sql = "UPDATE dbo.LichHen SET trangThai = 'HUY' "
+                + "WHERE maLichHen = ? AND trangThai = 'CHO_TIEP_NHAN'";
+        try (PreparedStatement ps = getActiveConnection().prepareStatement(sql)) {
+            ps.setString(1, maLichHen);
+            return ps.executeUpdate() == 1;
+        }
     }
 
     // ========================= 4. DỮ LIỆU ĐỔ COMBOBOX =========================

@@ -1,80 +1,35 @@
-
 package com.titipet.bus;
-
-import com.titipet.dao.TiepNhanDAO;
-import com.titipet.entity.DichVuSpa;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.HashSet;
 
+/** Kiểm tra yêu cầu tiếp nhận; dữ liệu chỉ được ghi khi POS thanh toán thành công. */
 public class TiepNhanService {
 
-    private final TiepNhanDAO tiepNhanDAO = new TiepNhanDAO();
-
-    // Nghiệp vụ tạo phiếu tiếp nhận
-    public boolean taoPhieuTiepNhan(
-            String maPhieuTiepNhan,
-            String maLichHen,
-            String maKH,
-            String maThuCung,
-            BigDecimal canNangThucTe,
-            String tinhTrangLong,
-            String ghiChu,
-            LocalDateTime thoiGianTraDuKien,
-            List<DichVuSpa> danhSachDichVu) {
-
-        // 1. Kiểm tra mã phiếu
-        if (maPhieuTiepNhan == null
-                || maPhieuTiepNhan.trim().isEmpty()) {
-            return false;
+    public TiepNhanSpaContext xacNhanDuLieu(TiepNhanSpaContext context) {
+        if (context == null) throw new IllegalArgumentException("Chưa có thông tin tiếp nhận.");
+        if (rong(context.maKH()) || rong(context.maThuCung()))
+            throw new IllegalArgumentException("Cần chọn khách hàng và thú cưng.");
+        if (rong(context.maNVThoSpa()))
+            throw new IllegalArgumentException("Cần phân công thợ Spa trước khi lập hóa đơn.");
+        if (context.canNangThucTe() == null || context.canNangThucTe().signum() <= 0)
+            throw new IllegalArgumentException("Cân nặng thực tế phải lớn hơn 0.");
+        if (rong(context.tinhTrangLong()))
+            throw new IllegalArgumentException("Cần ghi nhận tình trạng lông/da.");
+        if (context.thoiGianHen() == null || context.thoiGianKetThuc() == null ||
+                !context.thoiGianKetThuc().isAfter(context.thoiGianHen()))
+            throw new IllegalArgumentException("Giờ hẹn / giờ kết thúc không hợp lệ.");
+        if (context.dichVu().isEmpty())
+            throw new IllegalArgumentException("Cần chọn ít nhất một dịch vụ Spa.");
+        var daCo = new HashSet<String>();
+        for (TiepNhanSpaContext.DichVuDaChon dv : context.dichVu()) {
+            if (dv == null || rong(dv.maDichVu()) || !daCo.add(dv.maDichVu()) ||
+                    dv.donGiaChot() == null || dv.donGiaChot().signum() < 0)
+                throw new IllegalArgumentException("Dịch vụ hoặc giá xác nhận không hợp lệ / bị trùng.");
         }
-
-        // 2. Kiểm tra khách hàng
-        if (maKH == null || maKH.trim().isEmpty()) {
-            return false;
-        }
-
-        // 3. Kiểm tra thú cưng
-        if (maThuCung == null || maThuCung.trim().isEmpty()) {
-            return false;
-        }
-
-        // 4. Kiểm tra cân nặng
-        if (canNangThucTe == null
-                || canNangThucTe.compareTo(BigDecimal.ZERO) <= 0) {
-            return false;
-        }
-
-        // 5. Kiểm tra tình trạng lông
-        if (tinhTrangLong == null
-                || tinhTrangLong.trim().isEmpty()) {
-            return false;
-        }
-
-        // 6. Kiểm tra danh sách dịch vụ
-        if (danhSachDichVu == null
-                || danhSachDichVu.isEmpty()) {
-            return false;
-        }
-
-        // 7. Kiểm tra thời gian trả dự kiến
-        if (thoiGianTraDuKien == null
-                || thoiGianTraDuKien.isBefore(LocalDateTime.now())) {
-            return false;
-        }
-
-        // 8. Lưu phiếu tiếp nhận và chi tiết dịch vụ
-        return tiepNhanDAO.themPhieuTiepNhan(
-                maPhieuTiepNhan,
-                maLichHen,
-                maKH,
-                maThuCung,
-                canNangThucTe,
-                tinhTrangLong,
-                ghiChu,
-                thoiGianTraDuKien,
-                danhSachDichVu
-        );
+        return context;
     }
+
+    private static boolean rong(String text) { return text == null || text.isBlank(); }
 }

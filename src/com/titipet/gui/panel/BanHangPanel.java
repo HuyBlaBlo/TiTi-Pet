@@ -8,6 +8,7 @@ import com.titipet.bus.BanHangService;
 import com.titipet.bus.BanHangTinhTienService;
 import com.titipet.bus.BanHangThanhToanService;
 import com.titipet.bus.BanHangSpaService;
+import com.titipet.bus.TiepNhanSpaContext;
 import com.titipet.dao.BanHangSpaDAO;
 import com.titipet.gui.dialog.ThemDichVuSpaDialog;
 import com.titipet.entity.KhachHangBanHang;
@@ -53,6 +54,7 @@ public class BanHangPanel extends JPanel {
     private final BanHangKhuyenMaiService khuyenMaiService = new BanHangKhuyenMaiService();
     private final JComboBox<String> comboKhuyenMai = PosUI.combo(new String[]{"Không áp dụng"});
     private List<KhuyenMaiPOS> dsKhuyenMai = List.of();
+    private TiepNhanSpaContext yeuCauTiepNhan;
     private String maNhanVienDangNhap;
     public void setMaNhanVienDangNhap(String maNV) { this.maNhanVienDangNhap = maNV;}
     private List<SanPhamBanHang> products = new ArrayList<>();
@@ -99,6 +101,45 @@ public class BanHangPanel extends JPanel {
         if (autoLoad) {
             SwingUtilities.invokeLater(this::loadProducts);
             SwingUtilities.invokeLater(this::taiKhuyenMai);
+        }
+    }
+
+    /** Nạp một yêu cầu tiếp nhận đã xác nhận sang giỏ thanh toán POS. */
+    public void napTuTiepNhan(TiepNhanSpaContext yeuCau) {
+        new com.titipet.bus.TiepNhanService().xacNhanDuLieu(yeuCau);
+        if (!sales.gioHangRong()) {
+            int dongY = JOptionPane.showConfirmDialog(this,
+                "POS đang có giỏ hàng. Xóa giỏ cũ để lập hóa đơn Spa?",
+                "Chuyển tiếp nhận sang POS", JOptionPane.YES_NO_OPTION);
+            if (dongY != JOptionPane.YES_OPTION)
+                throw new IllegalStateException("Đã hủy chuyển sang POS; giỏ hiện tại được giữ nguyên.");
+        }
+        try {
+            KhachHangBanHang khach = customerService.tim(yeuCau.maKH()).stream()
+                .filter(k -> yeuCau.maKH().equals(k.maKH())).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy khách hàng tiếp nhận."));
+            BanHangSpaDAO.ThuCung pet = spaService.layThuCung(yeuCau.maKH()).stream()
+                .filter(t -> yeuCau.maThuCung().equals(t.ma())).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Thú cưng không còn thuộc khách hàng này."));
+            List<BanHangSpaDAO.DichVu> danhMuc = spaService.layDichVu();
+            List<BanHangService.DongSpa> dongMoi = new ArrayList<>();
+            for (TiepNhanSpaContext.DichVuDaChon item : yeuCau.dichVu()) {
+                BanHangSpaDAO.DichVu dv = danhMuc.stream()
+                    .filter(d -> item.maDichVu().equals(d.ma())).findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Dịch vụ đã ngừng hoạt động: " + item.maDichVu()));
+                dongMoi.add(spaService.chonDichVu(dv, pet, item.donGiaChot()));
+            }
+            sales.xoaToanBoGio();
+            setCustomer(khach);
+            for (BanHangService.DongSpa dong : dongMoi) sales.themSpa(dong);
+            yeuCauTiepNhan = yeuCau;
+            orderSource.setSelectedItem("Tại quầy");
+            pointInput.setText("0");
+            refreshCart();
+            status.setText("Tiếp nhận Spa - Thợ: " + yeuCau.maNVThoSpa()
+                + " - Thanh toán xong sẽ chuyển việc cho thợ");
+        } catch (Exception ex) {
+            throw new IllegalStateException("Không thể nạp dữ liệu tiếp nhận: " + ex.getMessage(), ex);
         }
     }
 
@@ -300,7 +341,10 @@ public class BanHangPanel extends JPanel {
             if (sales.gioHangRong()) return;
             int answer = JOptionPane.showConfirmDialog(this, "Xóa toàn bộ sản phẩm và dịch vụ trong giỏ?", "TiTiPet POS", JOptionPane.YES_NO_OPTION);
             if (answer == JOptionPane.YES_OPTION) {
-                sales.xoaToanBoGio(); refreshCart();
+                sales.xoaToanBoGio();
+                yeuCauTiepNhan = null; // Hủy tiếp nhận trước thanh toán; không ghi dữ liệu.
+                refreshCart();
+                status.setText("Giỏ hàng đã xóa. Có thể bán hàng bình thường.");
             }
         });
         row.add(clear, BorderLayout.EAST);
@@ -652,6 +696,10 @@ public class BanHangPanel extends JPanel {
         panel.add(details, BorderLayout.CENTER);
         PosUI.StyledButton remove = PosUI.button("×", PosUI.RED, WHITE, BORDER);
         remove.addActionListener(e -> {
+            if (yeuCauTiepNhan != null) {
+                message("Dịch vụ đã được xác nhận khi tiếp nhận. Xóa giỏ để hủy hoặc quay lại tiếp nhận.");
+                return;
+            }
             sales.xoaSpa(index);
             refreshCart();
         });
@@ -660,6 +708,10 @@ public class BanHangPanel extends JPanel {
     }
 
     private void chonDichVuSpa() {
+        if (yeuCauTiepNhan != null) {
+            message("Dịch vụ Spa đã được chốt tại tiếp nhận. Quay lại tiếp nhận để đổi dịch vụ.");
+            return;
+        }
         if (customer == null) {
             message("Hãy chọn khách hàng trước khi thêm dịch vụ Spa.");
             return;
@@ -711,6 +763,10 @@ public class BanHangPanel extends JPanel {
     }
 
     private void selectCustomer() {
+        if (yeuCauTiepNhan != null) {
+            message("Đang lập hóa đơn Spa từ tiếp nhận; không thể đổi khách hàng.");
+            return;
+        }
         JTextField filter = PosUI.field("Nhập tên hoặc số điện thoại, để trống = tất cả");
         int decision = JOptionPane.showConfirmDialog(this, filter, "Tìm khách hàng", JOptionPane.OK_CANCEL_OPTION);
         if (decision != JOptionPane.OK_OPTION) return;
@@ -886,7 +942,7 @@ public class BanHangPanel extends JPanel {
             String maHD = thanhToanService.thanhToan(
                 customer.maKH(), maNhanVienDangNhap, nguonDon,
                 phuongThuc, diem, sales.layGioHang(), sales.layGioSpa(),
-                tienKhachDua, km == null ? null : km.maKhuyenMai());
+                tienKhachDua, km == null ? null : km.maKhuyenMai(), yeuCauTiepNhan);
 
             BigDecimal tienThua = tienKhachDua == null ? BigDecimal.ZERO :
                 tienKhachDua.subtract(phaiThu);
@@ -895,6 +951,7 @@ public class BanHangPanel extends JPanel {
                 + "\nTiền thừa dự tính: " + money(tienThua),
                 "TiTi Pet - Thanh toán", JOptionPane.INFORMATION_MESSAGE);
             sales.xoaToanBoGio();
+            yeuCauTiepNhan = null;
             pointInput.setText("0");
             comboKhuyenMai.setSelectedIndex(0);
             setCustomer(null);

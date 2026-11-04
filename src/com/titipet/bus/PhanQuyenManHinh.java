@@ -35,8 +35,9 @@ public final class PhanQuyenManHinh {
                          "hoa-don", "khach-hang", "thu-cung", "kho",
                          "dich-vu-san-pham", "khuyen-mai" ->
                             vaiTro == VaiTro.QUAN_LY || vaiTro == VaiTro.THU_NGAN;
-                    // LichThoSpaPanel hiện đọc lịch mọi thợ. Chưa mở cho thợ khi chưa lọc dữ liệu.
-                    case "dieu-phoi-spa", "thong-ke" -> vaiTro == VaiTro.QUAN_LY;
+                    // Mỗi thợ Spa chỉ nhìn thấy công việc được giao theo mã nhân viên đăng nhập.
+                    case "dieu-phoi-spa" -> vaiTro == VaiTro.QUAN_LY || vaiTro == VaiTro.THO_SPA;
+                    case "thong-ke" -> vaiTro == VaiTro.QUAN_LY;
                     // Đổi trả chưa chốt nghiệp vụ; mã mới cũng phải khai báo quyền trước khi mở.
                     default -> false;
         };

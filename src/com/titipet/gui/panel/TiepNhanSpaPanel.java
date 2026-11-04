@@ -7,6 +7,8 @@ import com.titipet.entity.LichHen;
 import com.titipet.entity.NhanVien;
 import com.titipet.entity.enums.TrangThaiLichHen;
 import com.titipet.bus.TiepNhanService;
+import com.titipet.bus.TiepNhanSpaContext;
+import java.util.function.Consumer;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -72,9 +74,9 @@ public class TiepNhanSpaPanel extends JPanel {
     private JTextArea txtGhiChu;
     private JLabel lblGioTra, lblGiaDichVu, lblPhuThu, lblTongTien;
     
-    private Runnable onLapHoaDon;
+    private Consumer<TiepNhanSpaContext> onLapHoaDon;
 
-    public void setOnLapHoaDon(Runnable callback) {
+    public void setOnLapHoaDon(Consumer<TiepNhanSpaContext> callback) {
         this.onLapHoaDon = callback;
     }
 
@@ -407,7 +409,7 @@ public class TiepNhanSpaPanel extends JPanel {
         reject.addActionListener(e->tuChoiDichVu()); 
         invoice.addActionListener(e -> {
             if (onLapHoaDon != null) {
-                onLapHoaDon.run();
+                taoHoaDon();
             } else {
                 JOptionPane.showMessageDialog(
                         this,
@@ -804,183 +806,81 @@ public class TiepNhanSpaPanel extends JPanel {
         }
     }
 
+    /** Tạo yêu cầu từ dữ liệu đang có, giao MainFrame mở POS. Không ghi CSDL tại đây. */
     private void taoHoaDon() {
-
-    	String maKH;
-    	String maThuCung;
-    	String maLichHen;
-
-    	if (khachVangLai) {
-
-    	    if (khachVangLaiDangChon == null
-    	            || thuCungVangLaiDangChon == null) {
-
-    	        showWarning("Vui lòng tạo khách hàng và thú cưng trước.");
-    	        return;
-    	    }
-
-    	    maKH = khachVangLaiDangChon.getMaKH();
-
-    	    maThuCung = thuCungVangLaiDangChon.getMaThuCung();
-
-    	    // Khách trực tiếp không có lịch hẹn
-    	    maLichHen = null;
-
-    	} else {
-
-    	    if (lichHenDangChon == null) {
-    	        showWarning("Vui lòng chọn lịch hẹn.");
-    	        return;
-    	    }
-
-    	    maKH = lichHenDangChon.getKhachHang().getMaKH();
-
-    	    maThuCung = lichHenDangChon.getThuCung().getMaThuCung();
-
-    	    maLichHen = lichHenDangChon.getMaLichHen();
-    	}
-
-        // Kiểm tra cân nặng
-        if (txtCanNang.getText().trim().isEmpty()) {
-            showWarning("Vui lòng nhập cân nặng thực tế.");
-            txtCanNang.requestFocus();
-            return;
-        }
-
         try {
-            BigDecimal weight = new BigDecimal(
-                    txtCanNang.getText().trim().replace(",", ".")
-            );
-
-            if (weight.compareTo(BigDecimal.ZERO) <= 0) {
-                showWarning("Cân nặng phải lớn hơn 0 kg.");
-                txtCanNang.requestFocus();
-                return;
+            if (onLapHoaDon == null) {
+                throw new IllegalStateException("Chưa cấu hình điều hướng sang POS.");
             }
-
+            String maKH, maPet, maLich = null;
+            if (khachVangLai) {
+                if (khachVangLaiDangChon == null || thuCungVangLaiDangChon == null)
+                    throw new IllegalArgumentException("Vui lòng thêm khách và thú cưng trước.");
+                maKH = khachVangLaiDangChon.getMaKH();
+                maPet = thuCungVangLaiDangChon.getMaThuCung();
+            } else {
+                if (lichHenDangChon == null || lichHenDangChon.getKhachHang() == null
+                        || lichHenDangChon.getThuCung() == null)
+                    throw new IllegalArgumentException("Vui lòng chọn lịch hẹn hợp lệ.");
+                maKH = lichHenDangChon.getKhachHang().getMaKH();
+                maPet = lichHenDangChon.getThuCung().getMaThuCung();
+                maLich = lichHenDangChon.getMaLichHen();
+            }
+            BigDecimal canNang = new BigDecimal(txtCanNang.getText().strip().replace(",", "."));
+            if (radKhac.isSelected() && txtTinhTrangKhac.getText().isBlank())
+                throw new IllegalArgumentException("Vui lòng mô tả tình trạng lông/da.");
+            String tinhTrang = radRoiLong.isSelected() ? "Rối lông"
+                    : radVeRan.isSelected() ? "Ve, bọ/rận"
+                    : radKhac.isSelected() ? "Khác: " + txtTinhTrangKhac.getText().strip()
+                    : "Bình thường";
+            NhanVien tho = (NhanVien) cboThoSpa.getSelectedItem();
+            if (tho == null) throw new IllegalArgumentException("Chưa chọn thợ Spa.");
+            List<DichVuSpa> selected = layDichVuDuocChon();
+            if (selected.isEmpty()) throw new IllegalArgumentException("Cần chọn ít nhất một dịch vụ.");
+            List<TiepNhanSpaContext.DichVuDaChon> dong = new ArrayList<>();
+            int phut = 0;
+            for (int i = 0; i < selected.size(); i++) {
+                DichVuSpa dv = selected.get(i);
+                BigDecimal gia = dv.getDonGiaCoBan();
+                if (gia == null) throw new IllegalArgumentException("Dịch vụ chưa có đơn giá.");
+                // Phụ thu tình trạng lông được cộng vào dịch vụ đầu tiên, không thất thoát khi chuyển POS.
+                if (i == 0) gia = gia.add(tinhPhuThu());
+                dong.add(new TiepNhanSpaContext.DichVuDaChon(dv.getMaDichVu(), gia));
+                phut += dv.getThoiLuongPhut();
+            }
+            LocalDateTime batDau = LocalDateTime.now();
+            if (lichHenDangChon != null && lichHenDangChon.getThoiGianHen().isAfter(batDau))
+                batDau = lichHenDangChon.getThoiGianHen();
+            TiepNhanSpaContext yeuCau = tiepNhanService.xacNhanDuLieu(
+                new TiepNhanSpaContext(maKH, maPet, maLich, tho.getMaNV(), canNang,
+                    tinhTrang, txtGhiChu.getText().strip(), batDau,
+                    batDau.plusMinutes(phut), dong));
+            onLapHoaDon.accept(yeuCau);
         } catch (NumberFormatException ex) {
             showWarning("Cân nặng không hợp lệ.");
-            txtCanNang.requestFocus();
-            return;
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            showWarning(ex.getMessage());
         }
+    }
 
-        // Kiểm tra mô tả khi chọn tình trạng Khác
-        if (radKhac.isSelected()
-                && txtTinhTrangKhac.getText().trim().isEmpty()) {
+    /**
+     * Nạp lịch vừa chọn từ màn hình Đặt lịch hẹn: giữ mã lịch để POS liên kết,
+     * điền sẵn khách hàng, thú cưng, dịch vụ, thợ và ghi chú.
+     * MainFrame phải gọi SAU hienThiManHinh(), vì taiDuLieu() reset lựa chọn.
+     */
+    public void napLichHenDaDat(LichHen lichHen) {
+        com.titipet.bus.ChuyenLichHenTiepNhanService
+                .kiemTraLichChoTiepNhan(lichHen, LocalDate.now());
+        chonLichHen(lichHen);
+    }
 
-            showWarning("Vui lòng mô tả tình trạng lông khác.");
-            txtTinhTrangKhac.requestFocus();
-            return;
-        }
-
-        // Lấy các dịch vụ đã tick
-        List<DichVuSpa> selected = layDichVuDuocChon();
-
-        if (selected.isEmpty()) {
-            showWarning("Vui lòng chọn ít nhất một dịch vụ.");
-            return;
-        }
-
-        if (cboThoSpa.getSelectedItem() == null) {
-            showWarning("Vui lòng chọn nhân viên Spa phụ trách.");
-            return;
-        }
-
-        int confirm = JOptionPane.showConfirmDialog(
-                this,
-                "Xác nhận thông tin tiếp nhận và chuyển sang lập hóa đơn?",
-                "Xác nhận tiếp nhận",
-                JOptionPane.YES_NO_OPTION
-        );
-
-        if (confirm != JOptionPane.YES_OPTION) return;
-
-     // Lấy nhân viên phụ trách
-        NhanVien nhanVien = (NhanVien) cboThoSpa.getSelectedItem();
-        
-        if (khachVangLai) {
-            maKH = khachVangLaiDangChon.getMaKH();
-            maThuCung = thuCungVangLaiDangChon.getMaThuCung();
-        } else {
-            maKH = lichHenDangChon.getKhachHang().getMaKH();
-            maThuCung = lichHenDangChon.getThuCung().getMaThuCung();
-        }
-        
-        // Lấy cân nặng
-        BigDecimal canNang = new BigDecimal(
-                txtCanNang.getText().trim().replace(",", ".")
-        );
-
-        // Lấy tình trạng lông
-        String tinhTrangLong;
-
-        if (radBinhThuong.isSelected()) {
-            tinhTrangLong = "Bình thường";
-        } else if (radRoiLong.isSelected()) {
-            tinhTrangLong = "Rối lông";
-        } else if (radVeRan.isSelected()) {
-            tinhTrangLong = "Ve, bọ/rận";
-        } else {
-            tinhTrangLong = "Khác: " + txtTinhTrangKhac.getText().trim();
-        }
-
-        // Lấy thời gian trả dự kiến
-        int tongThoiLuong = 0;
-
-        for (DichVuSpa dv : selected) {
-            tongThoiLuong += dv.getThoiLuongPhut();
-        }
-
-        LocalDateTime thoiGianBatDau = LocalDateTime.now();
-
-        if (lichHenDangChon.getThoiGianHen().isAfter(thoiGianBatDau)) {
-            thoiGianBatDau = lichHenDangChon.getThoiGianHen();
-        }
-
-        LocalDateTime thoiGianTraDuKien =
-                thoiGianBatDau.plusMinutes(tongThoiLuong);
-
-        // Tạo mã phiếu tiếp nhận
-        String maPhieuTiepNhan = "PTN"
-                + System.currentTimeMillis();
-
-        // Gọi Service tạo phiếu tiếp nhận
-        boolean ketQua = tiepNhanService.taoPhieuTiepNhan(
-                maPhieuTiepNhan,
-                maLichHen,
-                maKH,
-                maThuCung,
-                canNang,
-                tinhTrangLong,
-                txtGhiChu.getText().trim(),
-                thoiGianTraDuKien,
-                selected
-        );
-
-        // Kiểm tra kết quả
-        if (ketQua) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Tạo phiếu tiếp nhận thành công!\n"
-                            + "Mã phiếu: " + maPhieuTiepNhan
-                            + "\nNhân viên: " + nhanVien.getHoTen()
-                            + "\nTổng dịch vụ: " + MONEY.format(
-                                    selected.stream()
-                                            .map(DichVuSpa::getDonGiaCoBan)
-                                            .filter(java.util.Objects::nonNull)
-                                            .reduce(BigDecimal.ZERO, BigDecimal::add)
-                            )
-                            + "\nPhụ thu: " + MONEY.format(tinhPhuThu()),
-                    "Thành công",
-                    JOptionPane.INFORMATION_MESSAGE
-            );
-
-            loadDuLieu();
-
-        } else {
-            showError("Tạo phiếu tiếp nhận thất bại!");
-        }
+    /** Làm mới các lịch chờ sau khi thanh toán hoặc quay về màn hình tiếp nhận. */
+    public void taiDuLieu() {
+        lichHenDangChon = null;
+        khachVangLai = false;
+        khachVangLaiDangChon = null;
+        thuCungVangLaiDangChon = null;
+        loadDuLieu();
     }
 
     private JPanel createCard(){

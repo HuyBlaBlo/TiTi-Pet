@@ -4,6 +4,8 @@ package com.titipet.dao;
 import com.titipet.bus.BanHangService;
 import com.titipet.bus.BanHangKhuyenMaiService;
 import com.titipet.bus.BanHangTinhTienService;
+import com.titipet.bus.TiepNhanSpaContext;
+import com.titipet.bus.TiepNhanService;
 import com.titipet.connectDB.ConnectDB;
 import com.titipet.entity.KhachHangBanHang;
 
@@ -47,6 +49,32 @@ public class BanHangGiaoDichDAO {
             List<BanHangService.DongSpa> gioSpa,
             BigDecimal tienKhachDua, String maKhuyenMai) throws SQLException {
 
+        return luuGiaoDich(maKH, maNV, nguonDon, phuongThuc, diemSuDung,
+                gio, gioSpa, tienKhachDua, maKhuyenMai, null);
+    }
+
+    /** Gắn lịch và phân công thợ trong cùng transaction với hóa đơn. */
+    public String luuGiaoDich(String maKH, String maNV,
+            String nguonDon, String phuongThuc, int diemSuDung,
+            List<BanHangService.DongGioHang> gio,
+            List<BanHangService.DongSpa> gioSpa,
+            BigDecimal tienKhachDua, String maKhuyenMai,
+            TiepNhanSpaContext tiepNhan) throws SQLException {
+
+        if (tiepNhan != null) {
+            new TiepNhanService().xacNhanDuLieu(tiepNhan);
+            if (!tiepNhan.maKH().equals(maKH) || !"TAI_QUAY".equals(nguonDon)
+                    || gioSpa.size() != tiepNhan.dichVu().size())
+                throw new SQLException("Dữ liệu tiếp nhận không khớp giỏ Spa / nguồn đơn.");
+            for (int i = 0; i < gioSpa.size(); i++) {
+                var dong = gioSpa.get(i);
+                var daChon = tiepNhan.dichVu().get(i);
+                if (!dong.maDichVu().equals(daChon.maDichVu())
+                        || !dong.maThuCung().equals(tiepNhan.maThuCung())
+                        || dong.donGiaDaChot().compareTo(daChon.donGiaChot()) != 0)
+                    throw new SQLException("Giỏ Spa đã thay đổi sau tiếp nhận. Vui lòng tiếp nhận lại.");
+            }
+        }
         Connection con = ConnectDB.getConnection();
         if (con == null || con.isClosed()) {
             ConnectDB.getInstance().connect();
@@ -212,6 +240,9 @@ public class BanHangGiaoDichDAO {
                     }
                 }
 
+                String maLichSpa = tiepNhan == null ? null
+                        : lienKetLichSauThanhToan(con, tiepNhan);
+
                 String maHD = "HD" + UUID.randomUUID()
                         .toString().replace("-", "")
                         .substring(0, 24).toUpperCase();
@@ -304,10 +335,10 @@ public class BanHangGiaoDichDAO {
                 String sqlCtSpa = """
                     INSERT INTO dbo.ChiTietHoaDon_DichVu
                       (maHoaDon, maDichVu, maThuCung,
-                       trangThaiThucHien, soLuong, donGia,
+                       maLichHen, maNVThoSpa, trangThaiThucHien, soLuong, donGia,
                        thueSuat, giaDaBaoGomThue,
                        tienGiamPhanBo, tienTruocThue, tienThue)
-                    VALUES (?, ?, ?, 'CHO_LAM', 1, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, 'CHO_LAM', 1, ?, ?, ?, ?, ?, ?)
                     """;
                 try (PreparedStatement ps = con.prepareStatement(sqlCtSpa)) {
                     for (int i = 0; i < gioSpa.size(); i++) {
@@ -321,12 +352,16 @@ public class BanHangGiaoDichDAO {
                         ps.setString(1, maHD);
                         ps.setString(2, dong.maDichVu());
                         ps.setString(3, dong.maThuCung());
-                        ps.setBigDecimal(4, dong.donGiaDaChot());
-                        ps.setBigDecimal(5, dong.thueSuat());
-                        ps.setBoolean(6, dong.giaDaBaoGomThue());
-                        ps.setBigDecimal(7, giamSpa);
-                        ps.setBigDecimal(8, truoc);
-                        ps.setBigDecimal(9, thue);
+                        if (maLichSpa == null) ps.setNull(4, Types.VARCHAR);
+                        else ps.setString(4, maLichSpa);
+                        if (tiepNhan == null) ps.setNull(5, Types.VARCHAR);
+                        else ps.setString(5, tiepNhan.maNVThoSpa());
+                        ps.setBigDecimal(6, dong.donGiaDaChot());
+                        ps.setBigDecimal(7, dong.thueSuat());
+                        ps.setBoolean(8, dong.giaDaBaoGomThue());
+                        ps.setBigDecimal(9, giamSpa);
+                        ps.setBigDecimal(10, truoc);
+                        ps.setBigDecimal(11, thue);
                         ps.executeUpdate();
                     }
                 }
@@ -370,6 +405,67 @@ public class BanHangGiaoDichDAO {
                 con.setAutoCommit(autoCommitCu);
             }
         }
+    }
+
+    /** Phải gọi bên trong transaction thanh toán, không mở/đóng connection riêng. */
+    private String lienKetLichSauThanhToan(Connection con, TiepNhanSpaContext c)
+            throws SQLException {
+        // Chỉ có thợ đang hoạt động mới được nhận công việc.
+        try (PreparedStatement ps = con.prepareStatement("""
+                SELECT 1 FROM dbo.NhanVien WITH (HOLDLOCK)
+                WHERE maNV = ? AND vaiTro = 'THO_SPA' AND dangHoatDong = 1
+                """)) {
+            ps.setString(1, c.maNVThoSpa());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) throw new SQLException("Thợ Spa không hợp lệ hoặc đã ngừng làm việc.");
+            }
+        }
+        String ghiChu = "Tiếp nhận: " + c.tinhTrangLong()
+                + "; cân nặng " + c.canNangThucTe() + " kg"
+                + (c.ghiChu().isBlank() ? "" : "; " + c.ghiChu());
+        if (c.maLichHen() != null && !c.maLichHen().isBlank()) {
+            String sql = """
+                UPDATE dbo.LichHen
+                SET trangThai = 'DA_TIEP_NHAN', maDichVu = ?, maNVThoSpa = ?,
+                    thoiGianKetThuc = ?,
+                    ghiChu = LEFT(CONCAT(COALESCE(ghiChu, N''), N' | ', ?), 1000)
+                WHERE maLichHen = ? AND maKH = ? AND maThuCung = ?
+                  AND trangThai = 'CHO_TIEP_NHAN'
+                """;
+            try (PreparedStatement ps = con.prepareStatement(sql)) {
+                ps.setString(1, c.dichVu().get(0).maDichVu());
+                ps.setString(2, c.maNVThoSpa());
+                ps.setTimestamp(3, Timestamp.valueOf(c.thoiGianKetThuc()));
+                ps.setNString(4, ghiChu);
+                ps.setString(5, c.maLichHen());
+                ps.setString(6, c.maKH());
+                ps.setString(7, c.maThuCung());
+                if (ps.executeUpdate() != 1)
+                    throw new SQLException("Lịch hẹn đã được tiếp nhận, hủy hoặc không đúng khách hàng.");
+            }
+            return c.maLichHen();
+        }
+        // Khách vãng lai: tạo lịch mới trong cùng transaction, không tạo phiếu treo.
+        String maLich = "LH" + UUID.randomUUID().toString().replace("-", "")
+                .substring(0, 18).toUpperCase();
+        String sql = """
+            INSERT INTO dbo.LichHen
+                (maLichHen, thoiGianHen, thoiGianKetThuc, trangThai,
+                 maKH, maThuCung, maDichVu, maNVThoSpa, ghiChu)
+            VALUES (?, ?, ?, 'DA_TIEP_NHAN', ?, ?, ?, ?, ?)
+            """;
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, maLich);
+            ps.setTimestamp(2, Timestamp.valueOf(c.thoiGianHen()));
+            ps.setTimestamp(3, Timestamp.valueOf(c.thoiGianKetThuc()));
+            ps.setString(4, c.maKH());
+            ps.setString(5, c.maThuCung());
+            ps.setString(6, c.dichVu().get(0).maDichVu());
+            ps.setString(7, c.maNVThoSpa());
+            ps.setNString(8, ghiChu);
+            ps.executeUpdate();
+        }
+        return maLich;
     }
 
     private KhachHangBanHang layKhachHang(
