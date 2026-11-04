@@ -8,6 +8,7 @@ import com.titipet.entity.ThucAn;
 import com.titipet.entity.enums.VaiTro;
 import com.titipet.gui.dialog.NhapKhoDialog;
 import com.titipet.gui.dialog.ThemSanPhamDialog;
+import com.titipet.gui.HuongDanSuDung;
 import com.titipet.gui.dialog.CapNhatSanPhamDialog;
 import com.titipet.gui.dialog.LichSuNhapKhoDialog;
 import com.titipet.util.RoundedPannel;

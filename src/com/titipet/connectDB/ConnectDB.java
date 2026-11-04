@@ -50,8 +50,8 @@ public final class ConnectDB {
 
         String host = layCauHinh("TITIPET_DB_HOST", file, "host", "localhost");
         String port = layCauHinh("TITIPET_DB_PORT", file, "port", "14333");
-        String user = layCauHinh("TITIPET_DB_USERNAME", file, "username", "");
-        String password = layCauHinh("TITIPET_DB_PASSWORD", file, "password", "");
+        String user = layCauHinh("TITIPET_DB_USERNAME", file, "username", "Titi_pet");
+        String password = layCauHinh("TITIPET_DB_PASSWORD", file, "password", "Khang1111.");
 
         if (user.isBlank() || password.isBlank()) {
             throw new SQLException("Thiếu thông tin SQL Server. Cấu hình TITIPET_DB_USERNAME và "
