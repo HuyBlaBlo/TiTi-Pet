@@ -12,7 +12,6 @@ import com.titipet.gui.HuongDanSuDung;
 import com.titipet.gui.dialog.CapNhatSanPhamDialog;
 import com.titipet.gui.dialog.LichSuNhapKhoDialog;
 import com.titipet.util.RoundedPannel;
-import com.titipet.gui.HuongDanSuDung;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
@@ -191,7 +190,7 @@ public class KhoPanel extends JPanel {
         rightActions.add(dateBadge);
         rightActions.add(statusBadge);
 
-        JButton help = new JButton("ⓘ  Hướng dẫn sử dụng");
+        JButton help = new JButton("Hướng dẫn sử dụng");
         help.setFont(new Font("Segoe UI", Font.BOLD, 12));
         help.setForeground(COLOR_TEXT_DARK);
         help.setBackground(Color.WHITE);

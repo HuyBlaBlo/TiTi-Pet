@@ -248,7 +248,7 @@ public class SanPhamPanel extends JPanel {
         // Banner thông tin
         RoundedPannel bannerInfo = new RoundedPannel(new Color(239, 246, 255), 10);
         bannerInfo.setLayout(new FlowLayout(FlowLayout.LEFT, 12, 10));
-        JLabel lblNotice = new JLabel("Bảng giá trong bảng mẫu dùng cơ sở ≤5kg cho từng dịch vụ tương ứng, số liệu không đồng bộ đầy đủ nên không được coi là đây là biểu giá chính thức.");
+        JLabel lblNotice = new JLabel("");
         lblNotice.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblNotice.setForeground(new Color(30, 64, 175));
         bannerInfo.add(lblNotice);
