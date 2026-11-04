@@ -20,13 +20,24 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.titipet.bus.KhachHangService;
+import com.titipet.entity.KhachHang;
+import com.titipet.entity.ThuCung;
+import com.titipet.gui.dialog.ThemKhachHangDialog;
+import com.titipet.gui.dialog.ThemThuCungDialog;
+
 
 
 public class TiepNhanSpaPanel extends JPanel {
 	private final LichHenDAO lichHenDAO = new LichHenDAO();
 	private final DichVuSpaDAO dichVuSpaDAO = new DichVuSpaDAO();
 	private final TiepNhanService tiepNhanService = new TiepNhanService();
-    
+	
+	private final KhachHangService khachHangService = new KhachHangService();
+
+	// Khách hàng và thú cưng của khách vãng lai đang tiếp nhận
+	private KhachHang khachVangLaiDangChon;
+	private ThuCung thuCungVangLaiDangChon;
 
     private static final Color BG = new Color(245,248,253);
     private static final Color BLUE = new Color(36,101,190);
@@ -508,6 +519,10 @@ public class TiepNhanSpaPanel extends JPanel {
 
     private void chonLichHen(LichHen lh) {
         if (lh == null) return;
+        
+     // Xóa dữ liệu khách vãng lai đang tiếp nhận
+        khachVangLaiDangChon = null;
+        thuCungVangLaiDangChon = null;
 
         lichHenDangChon = lh;
         khachVangLai = false;
@@ -573,35 +588,117 @@ public class TiepNhanSpaPanel extends JPanel {
     }
 
     private void moKhachVangLai() {
-        khachVangLai = true;
-        lichHenDangChon = null;
 
-        lblTenKhach.setText("Khách vãng lai");
-        lblTenThuCung.setText("Chưa nhập thú cưng");
-        lblMaLich.setText("KHÔNG CÓ LỊCH");
+        // Mở dialog thêm khách hàng
+        Window owner = SwingUtilities.getWindowAncestor(this);
+
+        ThemKhachHangDialog dialog =
+                new ThemKhachHangDialog(
+                        owner instanceof Frame ? (Frame) owner : null,
+                        khachHangService
+                );
+
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+
+        // Dialog đóng thì tiếp tục lấy thông tin khách
+        String sdt = JOptionPane.showInputDialog(
+                this,
+                "Nhập lại SĐT khách hàng vừa tạo:",
+                "Xác nhận khách hàng",
+                JOptionPane.QUESTION_MESSAGE
+        );
+
+        if (sdt == null || sdt.trim().isEmpty()) {
+            return;
+        }
+
+        KhachHang khachHang;
+
+        try {
+            khachHang = khachHangService.timKhachHangTheoMaHoacSDT(
+                    sdt.trim()
+            );
+
+        } catch (Exception ex) {
+            showError("Không tìm thấy khách hàng:\n" + ex.getMessage());
+            return;
+        }
+
+        if (khachHang == null) {
+            showWarning("Không tìm thấy khách hàng vừa tạo.");
+            return;
+        }
+
+        // Mở dialog thêm thú cưng
+        moDialogThemThuCung(khachHang);
+    }
+    
+    private void hienThiKhachVangLai(
+            KhachHang khachHang,
+            ThuCung thuCung
+    ) {
+
+        lblTenKhach.setText(khachHang.getHoTen());
+
+        lblTenThuCung.setText(thuCung.getTenThuCung());
+
+        // Không có lịch hẹn
+        lblMaLich.setText("--");
+
         lblGioHen.setText("Giờ hẹn: Khách trực tiếp");
 
-        txtCanNang.setText("");
-        txtGhiChu.setText("");
+        // Lấy cân nặng từ hồ sơ thú cưng
+        txtCanNang.setText(
+        	    String.valueOf(thuCung.getCanNang())
+        	);
 
-        // Bỏ chọn tất cả dịch vụ
+        txtGhiChu.setText(
+                thuCung.getGhiChu() == null
+                        ? ""
+                        : thuCung.getGhiChu()
+        );
+
+        // Reset dịch vụ
         for (JCheckBox cb : danhSachCheckBoxDichVu) {
             cb.setSelected(false);
         }
 
+        // Reset tình trạng lông
         radBinhThuong.setSelected(true);
         txtTinhTrangKhac.setText("");
         txtTinhTrangKhac.setEnabled(false);
 
         capNhatGiaVaGioTra();
+    }
+    
+    private void moDialogThemThuCung(KhachHang khachHang) {
 
-        JOptionPane.showMessageDialog(
-                this,
-                "Đã chuyển sang chế độ khách vãng lai.\n"
-                        + "Thông tin khách hàng và thú cưng chưa được lưu database.",
-                "Khách vãng lai",
-                JOptionPane.INFORMATION_MESSAGE
-        );
+        Window owner = SwingUtilities.getWindowAncestor(this);
+
+        ThemThuCungDialog dialog =
+                new ThemThuCungDialog(owner, khachHang);
+
+        dialog.setVisible(true);
+
+        // Lấy thú cưng vừa được thêm
+        ThuCung thuCung = dialog.getThuCungMoi();
+
+        // Người dùng đóng dialog hoặc hủy
+        if (thuCung == null) {
+            return;
+        }
+
+        // Lưu thông tin khách vãng lai đang tiếp nhận
+        khachVangLaiDangChon = khachHang;
+        thuCungVangLaiDangChon = thuCung;
+
+        // Chuyển sang chế độ khách vãng lai
+        khachVangLai = true;
+        lichHenDangChon = null;
+
+        // Hiển thị thông tin trên phiếu
+        hienThiKhachVangLai(khachHang, thuCung);
     }
     
     private List<DichVuSpa> layDichVuDuocChon() {
@@ -708,18 +805,40 @@ public class TiepNhanSpaPanel extends JPanel {
     }
 
     private void taoHoaDon() {
-        if (khachVangLai) {
-            showWarning(
-                    "Khách vãng lai cần được tạo/lưu thông tin khách hàng "
-                            + "và thú cưng trước."
-            );
-            return;
-        }
 
-        if (lichHenDangChon == null) {
-            showWarning("Vui lòng chọn khách hàng đang chờ tiếp nhận.");
-            return;
-        }
+    	String maKH;
+    	String maThuCung;
+    	String maLichHen;
+
+    	if (khachVangLai) {
+
+    	    if (khachVangLaiDangChon == null
+    	            || thuCungVangLaiDangChon == null) {
+
+    	        showWarning("Vui lòng tạo khách hàng và thú cưng trước.");
+    	        return;
+    	    }
+
+    	    maKH = khachVangLaiDangChon.getMaKH();
+
+    	    maThuCung = thuCungVangLaiDangChon.getMaThuCung();
+
+    	    // Khách trực tiếp không có lịch hẹn
+    	    maLichHen = null;
+
+    	} else {
+
+    	    if (lichHenDangChon == null) {
+    	        showWarning("Vui lòng chọn lịch hẹn.");
+    	        return;
+    	    }
+
+    	    maKH = lichHenDangChon.getKhachHang().getMaKH();
+
+    	    maThuCung = lichHenDangChon.getThuCung().getMaThuCung();
+
+    	    maLichHen = lichHenDangChon.getMaLichHen();
+    	}
 
         // Kiểm tra cân nặng
         if (txtCanNang.getText().trim().isEmpty()) {
@@ -778,11 +897,15 @@ public class TiepNhanSpaPanel extends JPanel {
 
      // Lấy nhân viên phụ trách
         NhanVien nhanVien = (NhanVien) cboThoSpa.getSelectedItem();
-
-        // Lấy thông tin khách hàng và thú cưng từ lịch hẹn
-        String maKH = lichHenDangChon.getKhachHang().getMaKH();
-        String maThuCung = lichHenDangChon.getThuCung().getMaThuCung();
-
+        
+        if (khachVangLai) {
+            maKH = khachVangLaiDangChon.getMaKH();
+            maThuCung = thuCungVangLaiDangChon.getMaThuCung();
+        } else {
+            maKH = lichHenDangChon.getKhachHang().getMaKH();
+            maThuCung = lichHenDangChon.getThuCung().getMaThuCung();
+        }
+        
         // Lấy cân nặng
         BigDecimal canNang = new BigDecimal(
                 txtCanNang.getText().trim().replace(",", ".")
@@ -824,7 +947,7 @@ public class TiepNhanSpaPanel extends JPanel {
         // Gọi Service tạo phiếu tiếp nhận
         boolean ketQua = tiepNhanService.taoPhieuTiepNhan(
                 maPhieuTiepNhan,
-                lichHenDangChon.getMaLichHen(),
+                maLichHen,
                 maKH,
                 maThuCung,
                 canNang,
