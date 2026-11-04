@@ -44,6 +44,23 @@ public class BanHangThanhToanService {
             List<BanHangService.DongSpa> gioSpa,
             BigDecimal tienKhachDua, String maKhuyenMai) {
 
+        return thanhToan(maKH, maNV, nguonDon, phuongThuc, diemSuDung,
+                gioHang, gioSpa, tienKhachDua, maKhuyenMai, null);
+    }
+
+    /** Thanh toán và tiếp nhận Spa trong cùng transaction (không phát sinh phiếu treo). */
+    public String thanhToan(
+            String maKH, String maNV, String nguonDon, String phuongThuc,
+            int diemSuDung, List<BanHangService.DongGioHang> gioHang,
+            List<BanHangService.DongSpa> gioSpa, BigDecimal tienKhachDua,
+            String maKhuyenMai, TiepNhanSpaContext tiepNhan) {
+
+        if (tiepNhan != null) {
+            new TiepNhanService().xacNhanDuLieu(tiepNhan);
+            if (!tiepNhan.maKH().equals(maKH) || gioSpa == null || gioSpa.isEmpty()
+                    || !"TAI_QUAY".equals(nguonDon))
+                throw new IllegalArgumentException("Đơn Spa tiếp nhận phải bán tại quầy, đúng khách hàng.");
+        }
         if (maKhuyenMai != null && !maKhuyenMai.isBlank() && diemSuDung != 0) {
             throw new IllegalArgumentException(
                 "Khuyến mãi không được kết hợp với sử dụng điểm.");
@@ -93,7 +110,7 @@ public class BanHangThanhToanService {
                     phuongThuc, diemSuDung,
                     gioHang == null ? List.of() : List.copyOf(gioHang),
                     gioSpa == null ? List.of() : List.copyOf(gioSpa),
-                    tienKhachDua, maKhuyenMai);
+                    tienKhachDua, maKhuyenMai, tiepNhan);
         } catch (java.sql.SQLException e) {
             throw new IllegalStateException(
                     "Không thể lưu giao dịch: " + e.getMessage(), e);

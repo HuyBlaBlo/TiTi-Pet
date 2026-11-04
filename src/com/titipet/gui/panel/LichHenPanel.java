@@ -736,6 +736,13 @@ public class LichHenPanel extends JPanel {
             txtNgayLich.setText(date.format(DATE_FORMAT));
             loadLichHenTheoNgay(date);
             hienThiPlaceholder(txtGhiChu);
+            // Nếu khách đến đặt và sử dụng Spa ngay trong ngày, có thể chuyển thẳng.
+            if (date.equals(LocalDate.now()) && onTiepNhan != null) {
+                int chon = JOptionPane.showConfirmDialog(this,
+                        "Khách đã đến cửa hàng? Chuyển ngay sang Tiếp nhận thú cưng?",
+                        "Tiếp nhận ngay", JOptionPane.YES_NO_OPTION);
+                if (chon == JOptionPane.YES_OPTION) onTiepNhan.accept(lichHen);
+            }
         } catch (DateTimeParseException ex) {
             showWarning("Ngày hoặc giờ không đúng định dạng. Ngày: dd/MM/yyyy, giờ: HH:mm.");
         } catch (SQLException ex) {
@@ -812,12 +819,17 @@ public class LichHenPanel extends JPanel {
             JButton accept = createSmallButton(
                 "Tiếp nhận", COLOR_LIGHT_BLUE, COLOR_BLUE
             );
-            accept.addActionListener(e -> capNhatTrangThai(lh, true));
+            accept.addActionListener(e -> chuyenSangTiepNhan(lh));
+            if (lh.getThoiGianHen().toLocalDate().isAfter(LocalDate.now())) {
+                accept.setEnabled(false);
+                accept.setToolTipText("Chỉ tiếp nhận từ ngày hẹn trở đi.");
+            }
             actions.add(accept);
         }
 
-        if (lh.getTrangThai() != TrangThaiLichHen.DA_HUY) {
+        if (lh.getTrangThai() == TrangThaiLichHen.CHO_TIEP_NHAN) {
 
+            // Chỉ dời/hủy lịch chưa tiếp nhận. Lịch đã thanh toán phải giữ nguyên.
             // Nút dời lịch
             JButton reschedule = createSmallButton(
                 "Dời lịch", COLOR_LIGHT_BLUE, COLOR_BLUE
@@ -831,7 +843,7 @@ public class LichHenPanel extends JPanel {
                 new Color(255, 239, 240),
                 new Color(190, 55, 65)
             );
-            cancel.addActionListener(e -> capNhatTrangThai(lh, false));
+            cancel.addActionListener(e -> huyLichHen(lh));
             actions.add(cancel);
         }
 
@@ -870,51 +882,33 @@ public class LichHenPanel extends JPanel {
         return button;
     }
 
-    private void capNhatTrangThai(LichHen lh, boolean tiepNhan) {
-        int confirm = JOptionPane.showConfirmDialog(
-                this,
-                tiepNhan
-                        ? "Xác nhận tiếp nhận lịch hẹn này?"
-                        : "Bạn có chắc muốn hủy lịch hẹn này?",
-                "Xác nhận",
-                JOptionPane.YES_NO_OPTION
-        );
-
-        if (confirm != JOptionPane.YES_OPTION) {
+    /** Chuyển sang Tiếp nhận thú cưng, chưa ghi DB hoặc coi là đã thu tiền. */
+    private void chuyenSangTiepNhan(LichHen lich) {
+        if (onTiepNhan == null) {
+            showWarning("Chưa cấu hình chuyển sang màn hình Tiếp nhận thú cưng.");
             return;
         }
+        int xacNhan = JOptionPane.showConfirmDialog(this,
+                "Chuyển lịch " + lich.getMaLichHen() + " sang Tiếp nhận thú cưng?\n"
+                + "Nhân viên cần kiểm tra thú cưng và thanh toán tại POS trước khi giao thợ.",
+                "Tiếp nhận lịch hẹn", JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (xacNhan == JOptionPane.YES_OPTION) onTiepNhan.accept(lich);
+    }
 
+    /** Chỉ hủy khi lịch chưa tiếp nhận/chưa thanh toán. */
+    private void huyLichHen(LichHen lich) {
+        int xacNhan = JOptionPane.showConfirmDialog(this,
+                "Bạn có chắc muốn hủy lịch hẹn " + lich.getMaLichHen() + "?",
+                "Xác nhận hủy lịch", JOptionPane.YES_NO_OPTION);
+        if (xacNhan != JOptionPane.YES_OPTION) return;
         try {
-            boolean ok = tiepNhan
-                    ? lichHenDAO.tiepNhanLichHen(lh.getMaLichHen())
-                    : lichHenDAO.huyLichHen(lh.getMaLichHen());
-
-            if (!ok) {
-                showWarning("Không thể cập nhật lịch hẹn. Vui lòng tải lại dữ liệu.");
-                return;
+            if (!lichHenDAO.huyLichHen(lich.getMaLichHen())) {
+                showWarning("Lịch đã thay đổi hoặc được tiếp nhận. Vui lòng tải lại.");
             }
-
-            // Cập nhật trạng thái trên đối tượng lịch hiện tại
-            if (tiepNhan) {
-                lh.setTrangThai(TrangThaiLichHen.DA_TIEP_NHAN);
-            } else {
-                lh.setTrangThai(TrangThaiLichHen.DA_HUY);
-            }
-
-            // Tải lại danh sách lịch hẹn
             loadLichHenTheoNgay(parseNgay(txtNgayLich.getText()));
-
-            // Nếu là tiếp nhận thì chuyển sang màn hình Tiếp nhận Spa
-            if (tiepNhan) {
-                if (onTiepNhan != null) {
-                    onTiepNhan.accept(lh);
-                } else {
-                    showWarning("Chưa cấu hình chuyển sang màn hình Tiếp nhận Spa.");
-                }
-            }
-
         } catch (SQLException ex) {
-            showError("Lỗi cập nhật trạng thái: " + ex.getMessage());
+            showError("Không thể hủy lịch: " + ex.getMessage());
         }
     }
 
@@ -949,5 +943,11 @@ public class LichHenPanel extends JPanel {
     }
     public void setOnTiepNhan(Consumer<LichHen> callback) {
         this.onTiepNhan = callback;
+    }
+
+    /** Làm mới lịch khi quay lại từ Tiếp nhận / POS, tránh nút Tiếp nhận cũ. */
+    public void taiDuLieu() {
+        LocalDate ngay = parseNgay(txtNgayLich.getText());
+        if (ngay != null) loadLichHenTheoNgay(ngay);
     }
 }

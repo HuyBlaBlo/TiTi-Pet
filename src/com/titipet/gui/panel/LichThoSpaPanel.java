@@ -14,6 +14,7 @@ import java.util.List;
 public class LichThoSpaPanel extends JPanel {
 
     private final LichThoSpaDAO dao = new LichThoSpaDAO();
+    private final String maThoDangNhap;
 
     private final Color BLUE = new Color(36, 101, 190);
     private final Color DARK_BLUE = new Color(29, 61, 112);
@@ -32,7 +33,10 @@ public class LichThoSpaPanel extends JPanel {
     private JPanel pnlHoanThanh;
     private JPanel pnlBanGiao;
 
-    public LichThoSpaPanel() {
+    public LichThoSpaPanel() { this(null); }
+
+    public LichThoSpaPanel(String maThoDangNhap) {
+        this.maThoDangNhap = maThoDangNhap;
         setLayout(new BorderLayout());
         setBackground(BG);
 
@@ -301,6 +305,8 @@ public class LichThoSpaPanel extends JPanel {
 
         dialog.setContentPane(content);
         dialog.setVisible(true);
+        // Các card đã tạm chuyển vào dialog: dựng lại sau khi dialog đóng.
+        taiDuLieu();
     }
     
     private static class RoundedButton extends JButton {
@@ -404,54 +410,39 @@ public class LichThoSpaPanel extends JPanel {
     // ================= LOAD DATA =================
 
     public void taiDuLieu() {
-        int[] s = dao.layThongKe();
-
-        lblChoLam.setText(String.valueOf(s[0]));
-        lblDangLam.setText(String.valueOf(s[1]));
-        lblHoanThanh.setText(String.valueOf(s[2]));
-        lblBanGiao.setText(String.valueOf(s[3]));
-
-        taiDanhSachCa();
+        try {
+            int[] so = dao.layThongKe(maThoDangNhap);
+            lblChoLam.setText(String.valueOf(so[0]));
+            lblDangLam.setText(String.valueOf(so[1]));
+            lblHoanThanh.setText(String.valueOf(so[2]));
+            lblBanGiao.setText(String.valueOf(so[3]));
+            taiDanhSachCa();
+        } catch (java.sql.SQLException e) {
+            JOptionPane.showMessageDialog(this, "Không tải được lịch Spa: " + e.getMessage(),
+                    "Lỗi dữ liệu", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
-    private void taiDanhSachCa() {
-        List<Object[]> ds = dao.layDanhSachSpa();
-
+    private void taiDanhSachCa() throws java.sql.SQLException {
+        List<Object[]> ds = dao.layDanhSachSpa(maThoDangNhap);
         pnlChoLam.removeAll();
         pnlDangLam.removeAll();
         pnlHoanThanh.removeAll();
         pnlBanGiao.removeAll();
-
         for (Object[] row : ds) {
             String trangThai = String.valueOf(row[9]);
             String banGiao = String.valueOf(row[10]);
-
             JPanel card = taoCardCa(row);
-
-            if ("CHO_LAM".equals(trangThai)) {
-                pnlChoLam.add(card);
-                pnlChoLam.add(Box.createVerticalStrut(8));
-
-            } else if ("DANG_LAM".equals(trangThai)) {
-                pnlDangLam.add(card);
-                pnlDangLam.add(Box.createVerticalStrut(8));
-
-            } else if ("HOAN_THANH".equals(trangThai)
-                    && "CHUA_BAN_GIAO".equals(banGiao)) {
+            if ("CHO_LAM".equals(trangThai)) pnlChoLam.add(card);
+            else if ("DANG_LAM".equals(trangThai)) pnlDangLam.add(card);
+            else if ("HOAN_THANH".equals(trangThai) && "CHUA_BAN_GIAO".equals(banGiao))
                 pnlHoanThanh.add(card);
-                pnlHoanThanh.add(Box.createVerticalStrut(8));
-
-            } else if ("DA_BAN_GIAO".equals(banGiao)) {
-                pnlBanGiao.add(card);
-                pnlBanGiao.add(Box.createVerticalStrut(8));
-            }
+            else if ("DA_BAN_GIAO".equals(banGiao)) pnlBanGiao.add(card);
         }
-
         hienThiRong(pnlChoLam);
         hienThiRong(pnlDangLam);
         hienThiRong(pnlHoanThanh);
         hienThiRong(pnlBanGiao);
-
         revalidate();
         repaint();
     }
@@ -493,7 +484,33 @@ public class LichThoSpaPanel extends JPanel {
         p.add(service);
         p.add(Box.createVerticalStrut(4));
         p.add(groomer);
-
+        String trangThai = String.valueOf(row[9]);
+        String banGiao = String.valueOf(row[10]);
+        String tiepTheo = "CHO_LAM".equals(trangThai) ? "DANG_LAM"
+                : "DANG_LAM".equals(trangThai) ? "HOAN_THANH"
+                : "HOAN_THANH".equals(trangThai) && "CHUA_BAN_GIAO".equals(banGiao)
+                ? "DA_BAN_GIAO" : null;
+        // Quản lý xem được, nhưng chỉ thợ đang đăng nhập và được phân công mới thao tác.
+        if (tiepTheo != null && maThoDangNhap != null
+                && maThoDangNhap.equals(row[12])) {
+            JButton thaoTac = new JButton("DANG_LAM".equals(tiepTheo) ? "Bắt đầu làm"
+                    : "HOAN_THANH".equals(tiepTheo) ? "Hoàn thành" : "Đã bàn giao");
+            thaoTac.addActionListener(e -> {
+                try {
+                    if (!dao.chuyenTrangThai(((Number) row[11]).longValue(),
+                            maThoDangNhap, trangThai, tiepTheo))
+                        throw new IllegalStateException("Ca đã thay đổi, hãy tải lại.");
+                    java.awt.Window dialog = SwingUtilities.getWindowAncestor(thaoTac);
+                    if (dialog instanceof JDialog) dialog.dispose();
+                    taiDuLieu();
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this, ex.getMessage(),
+                            "Không cập nhật được trạng thái", JOptionPane.ERROR_MESSAGE);
+                }
+            });
+            p.add(Box.createVerticalStrut(7));
+            p.add(thaoTac);
+        }
         return p;
     }
 

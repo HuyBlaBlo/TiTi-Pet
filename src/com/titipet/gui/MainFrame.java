@@ -3,7 +3,10 @@ package com.titipet.gui;
 import com.titipet.bus.AuthService;
 import com.titipet.bus.HoaDonService;
 import com.titipet.bus.PhanQuyenManHinh;
+import com.titipet.bus.TiepNhanSpaContext;
+import com.titipet.bus.ChuyenLichHenTiepNhanService;
 import com.titipet.entity.NhanVien;
+import com.titipet.entity.LichHen;
 import com.titipet.entity.enums.VaiTro;
 import com.titipet.gui.component.SidebarPanel;
 import com.titipet.gui.component.TopBarPanel;
@@ -27,6 +30,7 @@ import java.awt.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.sql.SQLException;
 
 public class MainFrame extends JFrame {
     // Mã màn hình dùng chung với các mục trong SidebarPanel.
@@ -88,9 +92,33 @@ public class MainFrame extends JFrame {
         dangKyPanel(CHOT_CA, new ChotCaPanel(maNV, vaiTro));
     }
 
-    /** Mục Đặt lịch hẹn Spa. */
+    /** Mục Đặt lịch hẹn Spa; nối nút Tiếp nhận đến màn hình thú cưng. */
     private void dangKyLichHen() {
-        dangKyPanel(LICH_HEN, new LichHenPanel());
+        LichHenPanel panel = new LichHenPanel();
+        panel.setOnTiepNhan(this::moTiepNhanTuLichHen);
+        dangKyPanel(LICH_HEN, panel);
+    }
+
+    /**
+     * Lịch đã đặt -> Tiếp nhận. Không cập nhật trạng thái ở đây;
+     * trạng thái DA_TIEP_NHAN chỉ được ghi cùng hóa đơn đã thanh toán.
+     */
+    public void moTiepNhanTuLichHen(LichHen lichDuocChon) {
+        if (!phanQuyenManHinh.duocTruyCap(TIEP_NHAN_SPA)) {
+            JOptionPane.showMessageDialog(this, "Tài khoản không có quyền tiếp nhận thú cưng.");
+            return;
+        }
+        try {
+            if (lichDuocChon == null)
+                throw new IllegalArgumentException("Chưa chọn lịch hẹn.");
+            LichHen lichMoiNhat = new ChuyenLichHenTiepNhanService()
+                    .layLichChoTiepNhan(lichDuocChon.getMaLichHen());
+            hienThiManHinh(TIEP_NHAN_SPA); // hàm này tải lại panel, nên nạp lịch SAU KHI mở
+            ((TiepNhanSpaPanel) panels.get(TIEP_NHAN_SPA)).napLichHenDaDat(lichMoiNhat);
+        } catch (SQLException | IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(),
+                    "Không thể tiếp nhận lịch hẹn", JOptionPane.WARNING_MESSAGE);
+        }
     }
 
     /** POS cần mã nhân viên đăng nhập khi tạo giao dịch. */
@@ -98,6 +126,22 @@ public class MainFrame extends JFrame {
         BanHangPanel panel = new BanHangPanel();
         panel.setMaNhanVienDangNhap(maNV);
         dangKyPanel(BAN_HANG, panel);
+    }
+
+    /** Điều hướng từ Tiếp nhận Spa sang POS, giữ các dòng Spa đã chốt giá. */
+    public void moBanHangTuTiepNhan(TiepNhanSpaContext yeuCau) {
+        if (!phanQuyenManHinh.duocTruyCap(BAN_HANG)) {
+            JOptionPane.showMessageDialog(this, "Tài khoản không có quyền lập hóa đơn.");
+            return;
+        }
+        try {
+            dangKyPanelKhiMoLanDau(BAN_HANG);
+            ((BanHangPanel) panels.get(BAN_HANG)).napTuTiepNhan(yeuCau);
+            hienThiManHinh(BAN_HANG);
+        } catch (RuntimeException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Không thể mở POS",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     /** Đổi trả cần mã nhân viên để xác nhận giao dịch. */
@@ -199,6 +243,15 @@ public class MainFrame extends JFrame {
         if (THONG_KE.equals(maManHinh)) {
             ((ThongKePanel) panels.get(THONG_KE)).taiDuLieu();
         }
+        if (DIEU_PHOI_SPA.equals(maManHinh)) {
+            ((LichThoSpaPanel) panels.get(DIEU_PHOI_SPA)).taiDuLieu();
+        }
+        if (TIEP_NHAN_SPA.equals(maManHinh)) {
+            ((TiepNhanSpaPanel) panels.get(TIEP_NHAN_SPA)).taiDuLieu();
+        }
+        if (LICH_HEN.equals(maManHinh)) {
+            ((LichHenPanel) panels.get(LICH_HEN)).taiDuLieu();
+        }
     }
 
     /**
@@ -222,8 +275,13 @@ public class MainFrame extends JFrame {
             case HOA_DON -> dangKyPanel(HOA_DON, new HoaDonPanel(new HoaDonService(nhanVien)));
             case KHACH_HANG -> dangKyKhachHang();
             case THU_CUNG -> dangKyThuCung(nhanVien);
-            case TIEP_NHAN_SPA -> dangKyPanel(TIEP_NHAN_SPA, new TiepNhanSpaPanel());
-            case DIEU_PHOI_SPA -> dangKyPanel(DIEU_PHOI_SPA, new LichThoSpaPanel());
+            case TIEP_NHAN_SPA -> {
+                TiepNhanSpaPanel tiepNhan = new TiepNhanSpaPanel();
+                tiepNhan.setOnLapHoaDon(this::moBanHangTuTiepNhan);
+                dangKyPanel(TIEP_NHAN_SPA, tiepNhan);
+            }
+            case DIEU_PHOI_SPA -> dangKyPanel(DIEU_PHOI_SPA,
+                new LichThoSpaPanel(nhanVien.getVaiTro() == VaiTro.THO_SPA ? maNV : null));
             case KHO -> dangKyPanel(KHO, new KhoPanel(authService));
             case DICH_VU_SAN_PHAM -> dangKyPanel(DICH_VU_SAN_PHAM, new SanPhamPanel(authService));
             case KHUYEN_MAI -> dangKyPanel(KHUYEN_MAI, new KhuyenMaiPanel(authService));
