@@ -6,7 +6,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-
+import com.titipet.entity.enums.LoaiThuCungApDung;
+import java.text.Normalizer;
+import java.util.Locale;
 import com.titipet.connectDB.ConnectDB;
 import com.titipet.entity.KhachHang;
 import com.titipet.entity.ThuCung;
@@ -47,7 +49,7 @@ public class BoSungThuCungDAO {
 	        return new ThuCung(
 	                maThuCung,
 	                tenThuCung,
-	                loaiThuCung,
+	                chuyenLoaiThuCung(loaiThuCung),
 	                canNang.doubleValue(),
 	                tinhTrangLong,
 	                ghiChu,
@@ -78,7 +80,24 @@ public class BoSungThuCungDAO {
 
 	    return "TC_TEST_01";
 	}
+private static LoaiThuCungApDung chuyenLoaiThuCung(String giaTri) {
+    if (giaTri == null || giaTri.isBlank()) {
+        throw new IllegalArgumentException("Loại thú cưng không được để trống.");
+    }
 
+    String loai = Normalizer.normalize(
+            giaTri.trim(), Normalizer.Form.NFD
+    ).replaceAll("\\p{M}", "")
+     .toUpperCase(Locale.ROOT);
+
+    return switch (loai) {
+        case "CHO" -> LoaiThuCungApDung.CHO;
+        case "MEO" -> LoaiThuCungApDung.MEO;
+        default -> throw new IllegalArgumentException(
+                "Loại thú cưng không hợp lệ: " + giaTri
+        );
+    };
+}
 }
 
 
