@@ -396,8 +396,7 @@ public class LichThoSpaPanel extends JPanel {
 
     private JLabel taoFooter() {
         JLabel footer = new JLabel(
-            "TiTi Pet • Interactive UX prototype • "
-            + "Dữ liệu lưu trong trình duyệt, không kết nối máy chủ"
+            "TiTi Pet"
         );
 
         footer.setFont(new Font("Segoe UI", Font.PLAIN, 10));
