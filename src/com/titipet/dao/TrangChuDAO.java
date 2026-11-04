@@ -52,7 +52,7 @@ public class TrangChuDAO {
     public Optional<CaHienTai> timCaHienTai(String maNV) throws SQLException {
         if (maNV == null || maNV.isBlank()) return Optional.empty();
         String sql = "SELECT TOP 1 maCa, trangThai, thoiGianBatDau " +
-                "FROM CaLamViec " +
+                "FROM dbo.CaLamViec " +
                 "WHERE maNV = ? AND trangThai IN ('DANG_MO', 'CHO_XAC_NHAN') " +
                 "ORDER BY thoiGianBatDau DESC, maCa DESC ";
         try (Connection con = moKetNoi();
@@ -75,7 +75,7 @@ public class TrangChuDAO {
 
     /**
      * Số liệu các thẻ trong ngày: lịch bỏ lịch hủy; hóa đơn chỉ tính đã thanh toán
-     * Doanh thu là tổng tienPhaiThu của hóa đơn trong ngày, chưa trừ giao dịch hoàn tiền
+     * Doanh thu thuần = hóa đơn đã thanh toán trừ các khoản trả hàng đã hoàn tiền trong ngày
      * Hai số liệu Spa đếm dòng dịch vụ DANG_LAM và CHO_LAM trên toàn cửa hàng
      *
      *  Các số liệu trả về: Tổng thú cưng, số lịch hẹn hôm nay,số lichj chờ tiếp nhận, số Hóa đơn đã thanh toán, tổng doanh thu hôm nay, số dịch vụ đang lam, và số dịch vụ chờ làm
@@ -84,8 +84,8 @@ public class TrangChuDAO {
         kiemTraNgay(ngay);
         String sql = """
                 SELECT
-                    (SELECT COUNT(*) FROM ThuCung) AS tongThuCung,
-                    (SELECT COUNT(*) FROM LichHen
+                    (SELECT COUNT(*) FROM dbo.ThuCung) AS tongThuCung,
+                    (SELECT COUNT(*) FROM dbo.LichHen
                         WHERE thoiGianHen >= ? AND thoiGianHen < ? AND trangThai <> 'HUY') AS lichHen,
                     (SELECT COUNT(*) FROM dbo.LichHen
                         WHERE thoiGianHen >= ? AND thoiGianHen < ?
@@ -93,17 +93,19 @@ public class TrangChuDAO {
                     (SELECT COUNT(*) FROM dbo.HoaDon
                         WHERE ngayLap >= ? AND ngayLap < ?
                         AND trangThai = 'DA_THANH_TOAN') as hoaDon,
-                    (SELECT COALESCE(SUM(tienPhaiThu), 0) FROM HoaDon
+                    ((SELECT COALESCE(SUM(tienPhaiThu), 0) FROM dbo.HoaDon
                         WHERE ngayLap >= ? AND ngayLap < ?
-                        AND trangThai = 'DA_THANH_TOAN') AS doanhThu,
-                    (SELECT COUNT(*)  FROM ChiTietHoaDon_DichVu
+                          AND trangThai = 'DA_THANH_TOAN')
+                      - (SELECT COALESCE(SUM(tienHoan), 0) FROM dbo.DoiTra
+                        WHERE ngayDoi >= ? AND ngayDoi < ? AND loaiXuLy = 'TRA')) AS doanhThu,
+                    (SELECT COUNT(*)  FROM dbo.ChiTietHoaDon_DichVu
                         WHERE trangThaiThucHien = 'DANG_LAM') AS dichVuDangLam,
-                    (SELECT COUNT(*)  FROM ChiTietHoaDon_DichVu
+                    (SELECT COUNT(*)  FROM dbo.ChiTietHoaDon_DichVu
                         WHERE trangThaiThucHien = 'CHO_LAM') AS dichVuChoLam
                 """;
         try (Connection con = moKetNoi();
              PreparedStatement ps = con.prepareStatement(sql)) {
-                for (int viTri = 1; viTri <= 7; viTri += 2) datKhoangNgay(ps, viTri, ngay);
+                for (int viTri = 1; viTri <= 9; viTri += 2) datKhoangNgay(ps, viTri, ngay);
                 try (ResultSet rs = ps.executeQuery()) {
                     rs.next();
                     return new SoLieu(rs.getLong("tongThuCung"), rs.getLong("lichHen"),
@@ -149,14 +151,19 @@ public class TrangChuDAO {
     /** Mã ca lấy từ ca của nhân viên đăng nhập*/
     public SoLieuCa laySoLieuCa(String maCa) throws SQLException {
         String sql = """
-                SELECT COUNT(*) AS soHoaDon,
-                       COALESCE(SUM(tienPhaiThu), 0) AS doanhThu
-                FROM dbo.HoaDon
-                WHERE maCa = ? AND trangThai = 'DA_THANH_TOAN'
+                SELECT h.soHoaDon, h.doanhThu - d.tienHoan AS doanhThu
+                FROM (SELECT COUNT(*) AS soHoaDon,
+                             COALESCE(SUM(tienPhaiThu), 0) AS doanhThu
+                      FROM dbo.HoaDon
+                      WHERE maCa = ? AND trangThai = 'DA_THANH_TOAN') h
+                CROSS JOIN (SELECT COALESCE(SUM(tienHoan), 0) AS tienHoan
+                            FROM dbo.DoiTra
+                            WHERE maCa = ? AND loaiXuLy = 'TRA') d
                 """;
         try (Connection con = moKetNoi();
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, maCa);
+            ps.setString(2, maCa);
             try (ResultSet rs = ps.executeQuery()) {
                 rs.next();
                 return new SoLieuCa(rs.getLong("soHoaDon"), rs.getBigDecimal("doanhThu"));
@@ -355,6 +362,7 @@ public class TrangChuDAO {
         return ketQua;
     }
 
+    /** Mở kết nối độc lập nhưng dùng đúng host, port, tên DB, user của đăng nhập. */
     private Connection moKetNoi() throws SQLException {
         return ConnectDB.getInstance().moKetNoiMoi();
     }
