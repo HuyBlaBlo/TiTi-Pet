@@ -15,12 +15,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Chỉ đọc dữ liệu báo cáo. Không sửa trạng thái hóa đơn, tồn kho hoặc ca làm việc.
- * Tất cả truy vấn thời gian đều dùng [đầu ngày, đầu ngày kế tiếp) để bao gồm đủ ngày cuối.
- * Doanh thu thuần = tiền thực thu hóa đơn DA_THANH_TOAN - hoàn tiền loại TRA.
- * Đây KHÔNG phải lợi nhuận vì CSDL chưa lưu đủ chi phí.
- */
 public final class ThongKeDAO {
     private static final BigDecimal ZERO = BigDecimal.ZERO;
 

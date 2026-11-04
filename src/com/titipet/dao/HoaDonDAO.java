@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/** Truy vấn đọc hóa đơn từ SQL Server; KHÔNG sửa hóa đơn, tồn kho hay điểm. */
+
 public class HoaDonDAO {
 
     public record HoaDonTomTat(String maHoaDon, LocalDateTime ngayLap,
