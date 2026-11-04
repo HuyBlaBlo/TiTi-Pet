@@ -97,7 +97,7 @@ public final class HoaDonPanel extends JPanel {
         locTrangThai.setPreferredSize(new Dimension(185, 44));
         locTrangThai.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         searchArea.add(locTrangThai, BorderLayout.EAST);
-        JButton search = nut("⌕  Tìm", BLUE, WHITE);
+        JButton search = nut("Tìm", BLUE, WHITE);
         search.setPreferredSize(new Dimension(82, 44));
         JPanel searchWithButton = trong(new BorderLayout(10, 0));
         searchWithButton.add(searchArea, BorderLayout.CENTER);

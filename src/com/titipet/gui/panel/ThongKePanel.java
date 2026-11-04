@@ -168,7 +168,7 @@ public final class ThongKePanel extends JPanel {
         JPanel p = trong(new GridLayout(1, 4, 14, 0));
         String[] ten = {"Tổng doanh thu thuần", "Doanh số dịch vụ Spa",
                 "Tiền mặt thuần", "Hóa đơn đã thanh toán"};
-        String[] icon = {"↗", "✂", "₫", "▤"};
+        String[] icon = {" đ", " đ", "₫", " đ"};
         for (int i = 0; i < ten.length; i++) {
             JPanel card = the(new BorderLayout(0, 8));
             card.setBorder(new EmptyBorder(20, 20, 20, 20));
