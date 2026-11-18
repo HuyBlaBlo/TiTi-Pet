@@ -1,39 +1,19 @@
-
 package com.titipet.main;
 
 import com.formdev.flatlaf.FlatLightLaf;
-import com.titipet.bus.AuthService;
-import com.titipet.connectDB.ConnectDB;
-import com.titipet.gui.LoginFrame;
+import com.titipet.gui.SplashFrame;
 
-import javax.swing.*;
-import java.sql.SQLException;
+import javax.swing.SwingUtilities;
 
 public class Main {
 
     public static void main(String[] args) {
         FlatLightLaf.setup();
 
-        try {
-            ConnectDB.getInstance().connect();
-
-        } catch (SQLException e) {
-
-            JOptionPane.showMessageDialog(
-                    null,
-                    "Không thể kết nối cơ sở dữ liệu!\n"
-                            + e.getMessage(),
-                    "Lỗi kết nối",
-                    JOptionPane.ERROR_MESSAGE
-            );
-
-            return;
-        }
         SwingUtilities.invokeLater(() -> {
-            AuthService authService = new AuthService();
-            LoginFrame loginFrame = new LoginFrame(authService);
-
-            loginFrame.setVisible(true);
+            SplashFrame splashFrame = new SplashFrame();
+            splashFrame.setVisible(true);
+            splashFrame.startLoading();
         });
     }
 }
