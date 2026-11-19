@@ -7,10 +7,14 @@ import com.titipet.dao.BanHangKhuyenMaiDAO.KhuyenMaiPOS;
 import com.titipet.bus.BanHangService;
 import com.titipet.bus.BanHangTinhTienService;
 import com.titipet.bus.BanHangThanhToanService;
+import com.titipet.bus.BanHangThueService;
+import com.titipet.dao.HoaDonDAO;
+import com.titipet.gui.dialog.HoaDonChiTietDialog;
 import com.titipet.bus.BanHangSpaService;
 import com.titipet.bus.TiepNhanSpaContext;
 import com.titipet.dao.BanHangSpaDAO;
 import com.titipet.gui.dialog.ThemDichVuSpaDialog;
+import com.titipet.gui.dialog.TaoKhachNhanhPosDialog;
 import com.titipet.entity.KhachHangBanHang;
 import com.titipet.entity.SanPhamBanHang;
 import com.titipet.gui.PosUI;
@@ -49,6 +53,7 @@ public class BanHangPanel extends JPanel {
     private final BanHangService sales;
     private final BanHangKhachHangService customerService;
     private final BanHangTinhTienService billing = new BanHangTinhTienService();
+    private final BanHangThueService thue = new BanHangThueService();
     private final BanHangThanhToanService thanhToanService = new BanHangThanhToanService();
     private final BanHangSpaService spaService = new BanHangSpaService();
     private final BanHangKhuyenMaiService khuyenMaiService = new BanHangKhuyenMaiService();
@@ -80,6 +85,8 @@ public class BanHangPanel extends JPanel {
     private final JLabel promoDiscount = PosUI.text("− 0 ₫", 12, true, NAVY);
     private final JLabel pointDiscount = PosUI.text("− 0 ₫", 12, true, NAVY);
     private final JLabel amountDue = PosUI.text("0 ₫", 19, true, BLUE);
+    private final JLabel vat8 = PosUI.text("0 ₫", 12, true, NAVY);
+    private boolean dangTuChonKhuyenMai;
     private final JLabel status = PosUI.text("Sẵn sàng", 11, false, MUTED);
     private final PosUI.StyledButton checkout = PosUI.button("Tính tiền / Xem thanh toán", WHITE, BLUE, null);
     private JComboBox<String> paymentMethod;
@@ -98,6 +105,8 @@ public class BanHangPanel extends JPanel {
         setLayout(new BorderLayout());
         setupInterface();
         wireEvents();
+        comboKhuyenMai.setEnabled(false);
+        comboKhuyenMai.setToolTipText("Hệ thống tự chọn khuyến mãi đem lại số tiền phải trả thấp nhất; nhập điểm để ưu tiên đổi điểm.");
         if (autoLoad) {
             SwingUtilities.invokeLater(this::loadProducts);
             SwingUtilities.invokeLater(this::taiKhuyenMai);
@@ -157,20 +166,21 @@ public class BanHangPanel extends JPanel {
         JComponent right = createInvoice();
         JPanel columns = new JPanel(new BorderLayout(16, 0));
         columns.setOpaque(false);
+        // Hoa don o ben trai, uu tien khong gian cho thong tin va thanh toan.
+        columns.add(right, BorderLayout.WEST);
         columns.add(left, BorderLayout.CENTER);
-        columns.add(right, BorderLayout.EAST);
         columns.setPreferredSize(new Dimension(1200, 770));
         columns.addComponentListener(new ComponentAdapter() {
             @Override public void componentResized(ComponentEvent event) {
                 int w = columns.getWidth();
-                int target = Math.max(365, Math.round(w * 0.395f));
+                int target = Math.max(460, Math.round(w * 0.56f));
                 if (right.getPreferredSize().width != target) {
                     right.setPreferredSize(new Dimension(target, 760));
                     columns.revalidate();
                 }
             }
         });
-        right.setPreferredSize(new Dimension(465, 760));
+        right.setPreferredSize(new Dimension(620, 760));
         main.add(columns, BorderLayout.CENTER);
     }
 
@@ -203,11 +213,11 @@ public class BanHangPanel extends JPanel {
         box.setBorder(BorderFactory.createEmptyBorder(20, 22, 20, 22));
 
         JPanel top = PosUI.vertical(0);
-        JLabel catalogTitle = PosUI.text("Danh mục sản phẩm & dịch vụ", 16, true, NAVY);
+        JLabel catalogTitle = PosUI.text("Sản phẩm bán chạy & tìm kiếm", 16, true, NAVY);
         catalogTitle.setIcon(PosIcons.of("box", 17, BLUE));
         catalogTitle.setIconTextGap(7);
         top.add(catalogTitle);
-        top.add(PosUI.text("Chọn nhanh mặt hàng hoặc nhập mã vạch", 11, false, MUTED));
+        top.add(PosUI.text("Bấm thẻ bán chạy để thêm ngay, hoặc tìm mã/tên sản phẩm", 11, false, MUTED));
         top.add(PosUI.space(28));
         JPanel searchRow = new JPanel(new BorderLayout(8, 0));
         searchRow.setOpaque(false);
@@ -357,7 +367,7 @@ public class BanHangPanel extends JPanel {
         row.setOpaque(false);
         row.add(PosUI.text("Khách hàng / Thành viên", 12, true, NAVY), BorderLayout.WEST);
         PosUI.StyledButton add = PosUI.button("+ Thêm khách mới", BLUE, new Color(238, 245, 255), new Color(195, 217, 251));
-        add.addActionListener(e -> message("Tính năng tạo khách hàng thuộc màn Khách hàng & VIP.\nPOS chỉ chọn khách đã lưu để tránh ghi CSDL sai nghiệp vụ."));
+        add.addActionListener(e -> moTaoKhachNhanh());
         row.add(add, BorderLayout.EAST);
         all.add(row);
         all.add(PosUI.space(11));
@@ -428,19 +438,21 @@ public class BanHangPanel extends JPanel {
 
     private JComponent createTotals() {
         JPanel totals = PosUI.vertical(0);
-        totals.add(amountLine("Tạm tính", subtotal));
+        totals.add(amountLine("Sau ưu đãi (trước thuế)", subtotal));
         totals.add(PosUI.space(5));
         totals.add(amountLine("Ưu đãi thành viên", tierDiscount));
         totals.add(PosUI.space(5));
         totals.add(amountLine("Khuyến mãi", promoDiscount));
         totals.add(PosUI.space(5));
-        totals.add(amountLine("Đổi điểm (0%)", pointDiscount));
+        totals.add(amountLine("Đổi điểm", pointDiscount));
+        totals.add(PosUI.space(5));
+        totals.add(amountLine("Thuế GTGT (8%)", vat8));
         totals.add(PosUI.space(9));
         totals.add(PosUI.line());
         totals.add(PosUI.space(7));
         totals.add(amountLineStrong("Cần thanh toán", amountDue));
         totals.add(PosUI.space(4));
-        totals.add(PosUI.text("Tạm tính · Chưa áp dụng KM/VAT phát sinh", 10, false, MUTED));
+        totals.add(PosUI.text("Giảm giá đã trừ ở dòng trước thuế · VAT 8%", 10, false, MUTED));
         return totals;
     }
 
@@ -470,28 +482,28 @@ public class BanHangPanel extends JPanel {
             @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { updateTotals(); }
         });
         comboKhuyenMai.addActionListener(e -> {
-            boolean coKM = khuyenMaiDaChon() != null;
-            if (coKM) pointInput.setText("0");
-            pointInput.setEnabled(!coKM);
-            updateTotals();
+            if (!dangTuChonKhuyenMai) updateTotals();
         });
         checkout.addActionListener(e -> showPaymentCalculation());
     }
 
     private void loadProducts() {
         String query = search.getText().strip();
+        boolean goiYSanPham = query.isEmpty();
         searchButton.setEnabled(false);
         status.setText("Đang tìm sản phẩm...");
         new SwingWorker<List<SanPhamBanHang>, Void>() {
             @Override protected List<SanPhamBanHang> doInBackground() {
-                return sales.timSanPham(query);
+                return goiYSanPham ? sales.laySanPhamBanChay(12) : sales.timSanPham(query);
             }
             @Override protected void done() {
                 searchButton.setEnabled(true);
                 try {
                     products = get();
                     refreshProductCards();
-                    status.setText("Đã tải " + products.size() + " sản phẩm từ danh mục");
+                    status.setText(goiYSanPham
+                        ? "Đề xuất " + products.size() + " sản phẩm bán chạy (bấm để thêm vào giỏ)"
+                        : "Tìm thấy " + products.size() + " sản phẩm phù hợp");
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     status.setText("Đã dừng tải sản phẩm.");
@@ -515,7 +527,7 @@ public class BanHangPanel extends JPanel {
         if (visible.isEmpty()) {
             JPanel empty = new JPanel(new BorderLayout());
             empty.setOpaque(false);
-            empty.add(PosUI.text("Chưa có sản phẩm phù hợp trong danh mục", 13, false, MUTED));
+            empty.add(PosUI.text("Chưa có sản phẩm bán chạy hoặc không có kết quả tìm kiếm", 13, false, MUTED));
             productGrid.add(empty);
         }
         productGrid.revalidate(); productGrid.repaint();
@@ -762,6 +774,41 @@ public class BanHangPanel extends JPanel {
         worker.execute();
     }
 
+    /** Tạo khách nhanh tại POS và tự chọn hồ sơ vừa lưu cho hóa đơn đang lập. */
+    private void moTaoKhachNhanh() {
+        if (yeuCauTiepNhan != null) {
+            message("Đang lập hóa đơn Spa từ tiếp nhận; không thể đổi khách hàng.");
+            return;
+        }
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        Frame frame = owner instanceof Frame ? (Frame) owner : null;
+        TaoKhachNhanhPosDialog dialog = new TaoKhachNhanhPosDialog(frame);
+        dialog.setVisible(true);
+        String maMoi = dialog.getMaKhachHangDaTao();
+        if (maMoi == null) return; // Đóng/Hủy: không thay đổi khách hàng đang chọn.
+        status.setText("Đang chọn khách hàng mới...");
+        new SwingWorker<List<KhachHangBanHang>, Void>() {
+            @Override protected List<KhachHangBanHang> doInBackground() {
+                return customerService.tim(maMoi);
+            }
+            @Override protected void done() {
+                try {
+                    KhachHangBanHang moi = get().stream()
+                            .filter(k -> maMoi.equals(k.maKH()))
+                            .findFirst().orElse(null);
+                    if (moi == null) {
+                        message("Đã tạo khách hàng, nhưng chưa tải lại được hồ sơ. Hãy chọn lại từ danh sách.");
+                        return;
+                    }
+                    setCustomer(moi);
+                    status.setText("Đã tạo và chọn khách hàng: " + moi.hoTen());
+                } catch (Exception ex) {
+                    message("Đã lưu khách hàng nhưng không tự chọn được: " + ex.getMessage());
+                }
+            }
+        }.execute();
+    }
+
     private void selectCustomer() {
         if (yeuCauTiepNhan != null) {
             message("Đang lập hóa đơn Spa từ tiếp nhận; không thể đổi khách hàng.");
@@ -839,40 +886,72 @@ public class BanHangPanel extends JPanel {
         }.execute();
     }
 
+    /** Một hóa đơn chỉ có một mã KM; tự chọn giá trị phải trả thấp nhất.
+     * Nếu người dùng nhập điểm thì ưu tiên đổi điểm, không cộng thêm KM. */
+    private void tuDongChonKhuyenMai() {
+        if (dangTuChonKhuyenMai) return;
+        int diem;
+        try { diem = Math.max(0, Integer.parseInt(pointInput.getText().strip())); }
+        catch (NumberFormatException ex) { diem = 0; }
+        int bestIndex = 0;
+        if (diem == 0 && !sales.gioHangRong()) {
+            BigDecimal min = thue.thanhVien(sales.layGioHang(), sales.layGioSpa(),
+                    customer, 0, false).phaiThu();
+            for (int i = 0; i < dsKhuyenMai.size(); i++) {
+                try {
+                    var kq = khuyenMaiService.tinh(dsKhuyenMai.get(i),
+                            sales.layGioHang(), sales.layGioSpa());
+                    if (kq.phaiThu().compareTo(min) < 0) {
+                        bestIndex = i + 1;
+                        min = kq.phaiThu();
+                    }
+                } catch (IllegalArgumentException ex) {
+                    // Mã không phù hợp mặt hàng hoặc không còn hiệu lực.
+                }
+            }
+        }
+        if (comboKhuyenMai.getSelectedIndex() != bestIndex) {
+            dangTuChonKhuyenMai = true;
+            try { comboKhuyenMai.setSelectedIndex(bestIndex); }
+            finally { dangTuChonKhuyenMai = false; }
+        }
+    }
+
     private void updateTotals() {
-        BigDecimal sum = sales.tinhTongTienHang().add(sales.tinhTongTienSpa());
-        subtotal.setText(money(sum));
+        tuDongChonKhuyenMai();
         KhuyenMaiPOS km = khuyenMaiDaChon();
-        if (km != null) {
-            try {
+        try {
+            if (km != null) {
                 var kq = khuyenMaiService.tinh(km, sales.layGioHang(), sales.layGioSpa());
+                subtotal.setText(money(kq.tienTruocThue()));
                 tierDiscount.setText("− 0 ₫");
                 promoDiscount.setText("− " + money(kq.tienGiamKM()));
                 pointDiscount.setText("− 0 ₫");
+                vat8.setText("+ " + money(kq.tienThue()));
                 amountDue.setText(money(kq.phaiThu()));
-                maxPoints.setText("Không dùng điểm cùng khuyến mãi");
-                checkout.setEnabled(!sales.gioHangRong());
-            } catch (RuntimeException ex) {
-                tierDiscount.setText("− 0 ₫");
-                promoDiscount.setText("Không áp dụng");
-                pointDiscount.setText("− 0 ₫");
-                amountDue.setText("—");
-                status.setText(ex.getMessage());
-                checkout.setEnabled(false);
+                maxPoints.setText("Đang áp dụng mã tốt nhất (không cộng điểm)");
+            } else {
+                int rawPoints;
+                try { rawPoints = Math.max(0, Integer.parseInt(pointInput.getText().strip())); }
+                catch (NumberFormatException ex) { rawPoints = 0; }
+                var result = thue.thanhVien(sales.layGioHang(), sales.layGioSpa(), customer,
+                        rawPoints, false);
+                subtotal.setText(money(result.truocThue()));
+                tierDiscount.setText("− " + money(result.giamHang()));
+                promoDiscount.setText("− 0 ₫");
+                pointDiscount.setText("− " + money(result.giamDiem()));
+                vat8.setText("+ " + money(result.tienThue()));
+                amountDue.setText(money(result.phaiThu()));
+                int allowed = billing.uocTinh(result.tamTinh(), customer, Integer.MAX_VALUE).diemSuDung();
+                maxPoints.setText("Tối đa " + allowed + " điểm");
             }
-            return;
+            checkout.setEnabled(!sales.gioHangRong());
+        } catch (RuntimeException ex) {
+            amountDue.setText("—");
+            vat8.setText("—");
+            status.setText(ex.getMessage());
+            checkout.setEnabled(false);
         }
-        int rawPoints;
-        try { rawPoints = Math.max(0, Integer.parseInt(pointInput.getText().strip())); }
-        catch (NumberFormatException ex) { rawPoints = 0; }
-        BanHangTinhTienService.KetQua bill = billing.uocTinh(sum, customer, rawPoints);
-        tierDiscount.setText("− " + money(bill.giamHang()));
-        promoDiscount.setText("− 0 ₫");
-        pointDiscount.setText("− " + money(bill.giamDiem()));
-        amountDue.setText(money(bill.phaiThu()));
-        int canUse = billing.uocTinh(sum, customer, Integer.MAX_VALUE).diemSuDung();
-        maxPoints.setText("Tối đa " + canUse + " điểm");
-        checkout.setEnabled(!sales.gioHangRong());
     }
 
     /** Thanh toán qua BUS, kiểm tra lại KM + giá + điểm tại DAO. */
@@ -885,21 +964,25 @@ public class BanHangPanel extends JPanel {
         try {
             int diem = Integer.parseInt(pointInput.getText().strip());
             KhuyenMaiPOS km = khuyenMaiDaChon();
-            BigDecimal tongTruocUuDai = sales.tinhTongTienHang().add(sales.tinhTongTienSpa());
-            BigDecimal giamHang, giamDiem, giamKM, phaiThu;
+            BigDecimal tongTruocUuDai, giamHang, giamDiem, giamKM, tienThue, phaiThu;
             if (km != null) {
                 if (diem != 0) throw new IllegalArgumentException(
                     "Không thể đồng thời sử dụng điểm và khuyến mãi.");
                 var kq = khuyenMaiService.tinh(km, sales.layGioHang(), sales.layGioSpa());
+                tongTruocUuDai = kq.tamTinh();
                 giamHang = BigDecimal.ZERO;
                 giamDiem = BigDecimal.ZERO;
                 giamKM = kq.tienGiamKM();
+                tienThue = kq.tienThue();
                 phaiThu = kq.phaiThu();
             } else {
-                var kq = billing.tinhChinhXac(tongTruocUuDai, customer, diem);
+                var kq = thue.thanhVien(sales.layGioHang(), sales.layGioSpa(), customer,
+                        diem, true);
+                tongTruocUuDai = kq.tamTinh();
                 giamHang = kq.giamHang();
                 giamDiem = kq.giamDiem();
                 giamKM = BigDecimal.ZERO;
+                tienThue = kq.tienThue();
                 phaiThu = kq.phaiThu();
             }
             String phuongThucText = (String) paymentMethod.getSelectedItem();
@@ -933,6 +1016,7 @@ public class BanHangPanel extends JPanel {
                   + "\nƯu đãi hạng: " + money(giamHang)
                   + "\nKhuyến mãi: " + money(giamKM)
                   + "\nGiảm điểm: " + money(giamDiem)
+                  + "\nThuế GTGT (8%): " + money(tienThue)
                   + "\nCần thu: " + money(phaiThu)
                   + "\nPhương thức: " + phuongThucText
                   + "\n\nXác nhận khách đã thanh toán?",
@@ -946,10 +1030,6 @@ public class BanHangPanel extends JPanel {
 
             BigDecimal tienThua = tienKhachDua == null ? BigDecimal.ZERO :
                 tienKhachDua.subtract(phaiThu);
-            JOptionPane.showMessageDialog(this,
-                "Thanh toán thành công!\nMã hóa đơn: " + maHD
-                + "\nTiền thừa dự tính: " + money(tienThua),
-                "TiTi Pet - Thanh toán", JOptionPane.INFORMATION_MESSAGE);
             sales.xoaToanBoGio();
             yeuCauTiepNhan = null;
             pointInput.setText("0");
@@ -958,7 +1038,17 @@ public class BanHangPanel extends JPanel {
             refreshCart();
             loadProducts();
             taiKhuyenMai();
-            status.setText("Đã lưu hóa đơn: " + maHD);
+            status.setText("Đã lưu hóa đơn mã hóa: " + maHD);
+            try {
+                var h = new HoaDonDAO().chiTiet(maHD).orElseThrow();
+                HoaDonChiTietDialog.hienThi(this, h);
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this,
+                    "Đã thanh toán thành công! Mã: " + maHD
+                    + "\nTiền thừa dự tính: " + money(tienThua)
+                    + "\nKhông mở được popup: " + e.getMessage(),
+                    "Thanh toán thành công", JOptionPane.WARNING_MESSAGE);
+            }
         } catch (NumberFormatException ex) {
             message("Số điểm phải là số nguyên hợp lệ.");
         } catch (IllegalArgumentException | IllegalStateException ex) {

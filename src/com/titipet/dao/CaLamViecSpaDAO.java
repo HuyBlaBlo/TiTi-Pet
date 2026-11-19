@@ -14,7 +14,7 @@ import com.titipet.entity.CaLamViecSpa;
 
 public class CaLamViecSpaDAO {
 
-    // Lấy tất cả ca của một thợ Spa
+    // Chỉ lấy các ca Spa trong ngày của thợ, lọc ngay từ SQL Server.
     public List<CaLamViecSpa> layCaTheoThoSpa(String maNV) {
 
         List<CaLamViecSpa> ds = new ArrayList<>();
@@ -71,6 +71,8 @@ public class CaLamViecSpaDAO {
             "WHERE COALESCE(ctdv.maNVThoSpa, lh.maNVThoSpa) = ? " +
             "AND hd.trangThai = 'DA_THANH_TOAN' " +
             "AND lh.trangThai = 'DA_TIEP_NHAN' " +
+            "AND lh.thoiGianHen >= CONVERT(date, SYSDATETIME()) " +
+            "AND lh.thoiGianHen < DATEADD(day, 1, CONVERT(date, SYSDATETIME())) " +
 
             "ORDER BY lh.thoiGianHen ASC";
 

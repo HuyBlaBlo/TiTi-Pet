@@ -50,7 +50,7 @@ public final class ThongKePanel extends JPanel {
     private final JLabel[] soThe = new JLabel[4];
     private final JLabel[] ghiChuThe = new JLabel[4];
     private final BieuDoCot bieuDo = new BieuDoCot();
-    private final JPanel theoKenh = trong(new GridLayout(0, 1, 0, 12));
+    private final JPanel theoKenh = trong(new GridLayout(0, 1, 0, 6));
     private final JPanel deXuat = cot();
     private final DefaultTableModel modelCa = new DefaultTableModel(
             new String[] {"Mã ca", "Thu ngân", "Quỹ đầu ca", "Tiền mặt thực đếm",
@@ -87,8 +87,8 @@ public final class ThongKePanel extends JPanel {
     }
 
     private void taoGiaoDien() {
-        JPanel noiDung = cot();
-        noiDung.setBorder(new EmptyBorder(24, 26, 35, 26));
+        JPanel noiDung = new ResponsiveContent();
+        noiDung.setBorder(new EmptyBorder(12, 14, 18, 14));
         noiDung.add(tieuDe());
         noiDung.add(khoang(17));
         noiDung.add(thanhLoc());
@@ -117,12 +117,26 @@ public final class ThongKePanel extends JPanel {
         add(cuon, BorderLayout.CENTER);
     }
 
+    /** Khong de noi dung bi tran ngang khi thu nho man hinh. */
+    private static final class ResponsiveContent extends JPanel implements Scrollable {
+        ResponsiveContent() {
+            super();
+            setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+            setOpaque(false);
+        }
+        @Override public Dimension getPreferredScrollableViewportSize() { return getPreferredSize(); }
+        @Override public int getScrollableUnitIncrement(Rectangle r, int orientation, int direction) { return 18; }
+        @Override public int getScrollableBlockIncrement(Rectangle r, int orientation, int direction) { return 120; }
+        @Override public boolean getScrollableTracksViewportWidth() { return true; }
+        @Override public boolean getScrollableTracksViewportHeight() { return false; }
+    }
+
     private JPanel tieuDe() {
         JPanel p = trong(new BorderLayout(14, 0));
         JPanel ten = cot();
         ten.add(chu("TI TI PET • WORKSPACE", 10, BLUE, true));
         ten.add(khoang(6));
-        ten.add(chu("Thống kê và báo cáo", 27, NAVY, true));
+        ten.add(chu("Thống kê và báo cáo", 22, NAVY, true));
         ten.add(khoang(4));
         ten.add(chu("Theo dõi doanh thu, hóa đơn, ca làm việc và khuyến nghị cho cửa hàng",
                 12, MUTED, false));
@@ -165,7 +179,17 @@ public final class ThongKePanel extends JPanel {
     }
 
     private JPanel cacThe() {
-        JPanel p = trong(new GridLayout(1, 4, 14, 0));
+        JPanel p = trong(new GridLayout(1, 4, 8, 8));
+        p.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override public void componentResized(java.awt.event.ComponentEvent e) {
+                boolean narrow = p.getWidth() < 880;
+                GridLayout layout = (GridLayout) p.getLayout();
+                if (layout.getRows() != (narrow ? 2 : 1)) {
+                    p.setLayout(new GridLayout(narrow ? 2 : 1, narrow ? 2 : 4, 8, 8));
+                    p.revalidate();
+                }
+            }
+        });
         String[] ten = {"Tổng doanh thu thuần", "Doanh số dịch vụ Spa",
                 "Tiền mặt thuần", "Hóa đơn đã thanh toán"};
         String[] icon = {" đ", " đ", "₫", " đ"};
@@ -219,7 +243,7 @@ public final class ThongKePanel extends JPanel {
     }
 
     private JPanel hangBangXepHang() {
-        JPanel p = trong(new GridLayout(1, 2, 16, 0));
+        JPanel p = trong(new GridLayout(1, 2, 10, 0));
         JPanel hang = khung("Sản phẩm bán chạy", "Theo số lượng, chưa trừ đổi/trả");
         hang.add(taoCuonBang(bangHang, 220), BorderLayout.CENTER);
         JPanel spa = khung("Dịch vụ Spa được chọn nhiều", "Theo lượt đã thanh toán");

@@ -54,6 +54,8 @@ public class LichHenPanel extends JPanel {
     private JTextField txtKhachHang;
     private JTextField txtNgayHen;
     private JTextField txtNgayLich;
+    private JTextField txtTimLichTheoSdt;
+    private final com.titipet.bus.LichHenService lichHenService = new com.titipet.bus.LichHenService();
     private JComboBox<String> cboGioHen;
     private JTextField txtGhiChu;
     private JComboBox<ComboItem<ThuCung>> cboThuCung;
@@ -333,51 +335,104 @@ public class LichHenPanel extends JPanel {
         return card;
     }
 
+    /** Khung tra cuu lich theo SĐT thay cho lich lam viec cua tho. */
     private JPanel createScheduleCard() {
         RoundedPannel card = new RoundedPannel(Color.WHITE, 16);
         card.setLayout(new BorderLayout(0, 12));
         card.setBorder(new EmptyBorder(17, 16, 16, 16));
-
-        JPanel header = new JPanel();
+        JPanel header = new JPanel(new BorderLayout(0, 10));
         header.setOpaque(false);
-        header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
-        JLabel title = new JLabel("Lịch làm việc của thợ");
+        JLabel title = new JLabel("Tra cứu lịch hẹn theo SĐT");
         title.setFont(new Font("Segoe UI", Font.BOLD, 15));
         title.setForeground(COLOR_TEXT);
-        JLabel sub = new JLabel("Các hẹn trong ngày đã chọn");
+        JLabel sub = new JLabel("Tìm lịch để dời, hủy hoặc tiếp nhận khách đã hẹn");
         sub.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         sub.setForeground(COLOR_MUTED);
-
-        JPanel dateRow = new JPanel(new BorderLayout(6, 0));
-        dateRow.setOpaque(false);
-        txtNgayLich = createTextField(LocalDate.now().format(DATE_FORMAT));
-        txtNgayLich.setEditable(false);
-        // Ngày xem lịch độc lập với ngày hẹn trên phiếu.
-        JPanel dateLichPicker = createDatePicker(LocalDate.now(), txtNgayLich,
-                ngay -> loadLichHenTheoNgay(ngay));
-        JButton btnXem = createButton("Xem", COLOR_LIGHT_BLUE, COLOR_BLUE, false);
-        btnXem.addActionListener(e -> loadLichHenTheoNgay(parseNgay(txtNgayLich.getText())));
-        dateRow.add(dateLichPicker, BorderLayout.CENTER);
-        dateRow.add(btnXem, BorderLayout.EAST);
-
-        header.add(title);
-        header.add(Box.createVerticalStrut(3));
-        header.add(sub);
-        header.add(Box.createVerticalStrut(12));
-        header.add(dateRow);
+        txtTimLichTheoSdt = createPlaceholderTextField("SĐT 10 số, bắt đầu bằng 0");
+        txtTimLichTheoSdt.setToolTipText("Nhập đúng 10 chữ số, ví dụ 0908000001");
+        gioiHanNhapSoDienThoai(txtTimLichTheoSdt);
+        JButton btnTim = createButton("Tìm lịch", COLOR_LIGHT_BLUE, COLOR_BLUE, false);
+        txtTimLichTheoSdt.addActionListener(e -> traCuuLichTheoSdt());
+        btnTim.addActionListener(e -> traCuuLichTheoSdt());
+        JPanel row = new JPanel(new BorderLayout(6, 0));
+        row.setOpaque(false);
+        row.add(txtTimLichTheoSdt, BorderLayout.CENTER);
+        row.add(btnTim, BorderLayout.EAST);
+        JPanel captions = new JPanel();
+        captions.setOpaque(false);
+        captions.setLayout(new BoxLayout(captions, BoxLayout.Y_AXIS));
+        captions.add(title);
+        captions.add(Box.createVerticalStrut(4));
+        captions.add(sub);
+        header.add(captions, BorderLayout.NORTH);
+        header.add(row, BorderLayout.SOUTH);
+        txtNgayLich = new JTextField(LocalDate.now().format(DATE_FORMAT));
 
         danhSachLichPanel = new JPanel();
         danhSachLichPanel.setOpaque(false);
         danhSachLichPanel.setLayout(new BoxLayout(danhSachLichPanel, BoxLayout.Y_AXIS));
-
-        JScrollPane scheduleScroll = new JScrollPane(danhSachLichPanel);
-        scheduleScroll.setBorder(null);
-        scheduleScroll.getViewport().setBackground(Color.WHITE);
-        scheduleScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-
+        JScrollPane scroll = new JScrollPane(danhSachLichPanel);
+        scroll.setBorder(null);
+        scroll.getViewport().setBackground(Color.WHITE);
+        scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         card.add(header, BorderLayout.NORTH);
-        card.add(scheduleScroll, BorderLayout.CENTER);
+        card.add(scroll, BorderLayout.CENTER);
         return card;
+    }
+
+    private void traCuuLichTheoSdt() {
+        String phone = getPlaceholderFieldValue(txtTimLichTheoSdt);
+        if (phone.isEmpty()) {
+            hienThiGoiYTimLich();
+            return; // Không coi placeholder là dữ liệu người dùng.
+        }
+        try {
+            List<LichHen> list = lichHenService.traCuuTheoSoDienThoai(phone);
+            danhSachLichPanel.removeAll();
+            if (list.isEmpty()) {
+                JLabel empty = new JLabel("Không tìm thấy lịch hẹn cho số điện thoại này.");
+                empty.setForeground(COLOR_MUTED);
+                danhSachLichPanel.add(empty);
+            } else {
+                for (LichHen lh : list) {
+                    danhSachLichPanel.add(createAppointmentItem(lh));
+                    danhSachLichPanel.add(Box.createVerticalStrut(9));
+                }
+            }
+            danhSachLichPanel.revalidate();
+            danhSachLichPanel.repaint();
+        } catch (IllegalArgumentException ex) {
+            showWarning(ex.getMessage());
+        } catch (SQLException ex) {
+            showError("Không thể tra cứu lịch hẹn: " + ex.getMessage());
+        }
+    }
+
+    /** Chỉ nhận 0-10 chữ số; vẫn cho phép placeholder hiển thị khi ô trống. */
+    private void gioiHanNhapSoDienThoai(JTextField field) {
+        javax.swing.text.AbstractDocument doc =
+                (javax.swing.text.AbstractDocument) field.getDocument();
+        doc.setDocumentFilter(new javax.swing.text.DocumentFilter() {
+            @Override
+            public void replace(FilterBypass fb, int offset, int length, String text,
+                    javax.swing.text.AttributeSet attrs)
+                    throws javax.swing.text.BadLocationException {
+                String old = fb.getDocument().getText(0, fb.getDocument().getLength());
+                String next = old.substring(0, offset) + (text == null ? "" : text)
+                        + old.substring(offset + length);
+                Object placeholder = field.getClientProperty("placeholder");
+                if ((placeholder != null && next.equals(placeholder.toString()))
+                        || next.matches("[0-9]{0,10}")) {
+                    super.replace(fb, offset, length, text, attrs);
+                }
+            }
+            @Override
+            public void insertString(FilterBypass fb, int offset, String text,
+                    javax.swing.text.AttributeSet attrs)
+                    throws javax.swing.text.BadLocationException {
+                replace(fb, offset, 0, text, attrs);
+            }
+        });
     }
 
     /** Tạo ô chọn ngày bằng popup lịch; người dùng không thể gõ ngày thủ công. */
@@ -752,28 +807,27 @@ public class LichHenPanel extends JPanel {
         }
     }
 
+    /** Refresh ket qua tim kiem, khong tu dong lo lich cua moi khach. */
     private void loadLichHenTheoNgay(LocalDate ngay) {
-        if (ngay == null || danhSachLichPanel == null) return;
-        try {
-            danhSachLichPanel.removeAll();
-            List<LichHen> danhSach = lichHenDAO.layLichHenTheoNgay(ngay);
-            if (danhSach.isEmpty()) {
-                JLabel empty = new JLabel("Chưa có lịch hẹn trong ngày này.");
-                empty.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-                empty.setForeground(COLOR_MUTED);
-                empty.setBorder(new EmptyBorder(20, 5, 10, 5));
-                danhSachLichPanel.add(empty);
-            } else {
-                for (LichHen lh : danhSach) {
-                    danhSachLichPanel.add(createAppointmentItem(lh));
-                    danhSachLichPanel.add(Box.createVerticalStrut(10));
-                }
-            }
-            danhSachLichPanel.revalidate();
-            danhSachLichPanel.repaint();
-        } catch (SQLException ex) {
-            showError("Không thể tải lịch làm việc: " + ex.getMessage());
+        if (danhSachLichPanel == null) return;
+        if (txtTimLichTheoSdt != null
+                && getPlaceholderFieldValue(txtTimLichTheoSdt).matches("0[0-9]{9}")) {
+            traCuuLichTheoSdt();
+        } else {
+            hienThiGoiYTimLich();
         }
+    }
+
+    private void hienThiGoiYTimLich() {
+        if (danhSachLichPanel == null) return;
+        danhSachLichPanel.removeAll();
+        JLabel hint = new JLabel("Nhập SĐT 10 chữ số để xem lịch hẹn.");
+        hint.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        hint.setForeground(COLOR_MUTED);
+        hint.setBorder(new EmptyBorder(20, 4, 10, 4));
+        danhSachLichPanel.add(hint);
+        danhSachLichPanel.revalidate();
+        danhSachLichPanel.repaint();
     }
 
     private JPanel createAppointmentItem(LichHen lh) {

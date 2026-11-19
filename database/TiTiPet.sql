@@ -1,14 +1,13 @@
 ﻿/*
- TiTi Pet | 01 Schema chinh (SQL Server 2012+)
- 14 bang cot loi (theo bao cao Nhom 06) + 2 bang mo rong DoiTra, LichSuNhapKho.
- 2 views bao cao, FK, indexes va stored procedure chi doc.
- - Cai dat MOI: ket noi SSMS va chay tren SQL Server.
- - Database mac dinh: TiTiPetDB. MUON TAO DB TEST, thay DONG CREATE DATABASE
-   va DONG USE TiTiPetDB trong file bang TiTiPetDB_FULL_TEST (xem README).
- - KHONG drop data / khong sua ma san pham / khong seed du lieu trong file nay.
- - Neu database dang co du lieu, backup truoc; danh gia schema cu truoc khi nang cap.
- - Khong dung script nay de tu dong dong bo tat ca bien the CSDL da duoc chinh sua thu cong.
- - Khong luu tai khoan/mat khau SQL trong file SQL.
+ TiTi Pet - DATABASE THONG NHAT (theo bao cao Nhom 06, ban v3)
+ File 1/2: TiTiPet.sql - cau truc, FK, CHECK, view, stored procedure.
+ Gop: TiTiPet(1).sql + 10_spa_flow_link.sql + rang buoc ma hoa don tu 11_fix_nhan_su_hoa_don.sql.
+ QUAN TRONG: danh cho DATABASE MOI/TRONG; KHONG chay tren TiTiPetDB dang co du lieu.
+ KHONG DROP DATABASE/TABLE, KHONG UPDATE tai khoan/hoa don cu, KHONG SEED.
+ HoaDon.maHoaDon: HD + YYMMDD + 4 chu so tang trong ngay (vd HD2609140001).
+ Cac ma KH/NV/TC/SP/LH/CA... khong co format co dinh trong bao cao: giu ma on dinh cua du an.
+ SQL Server 2012+; GO chay bang SSMS/sqlcmd.
+ Chay file nay roi moi chay seed nhe
 */
 SET NOCOUNT ON;
 GO
@@ -31,6 +30,9 @@ BEGIN
         diemTichLuy         INT               NOT NULL CONSTRAINT DF_KhachHang_diem DEFAULT (0),
         CONSTRAINT PK_KhachHang PRIMARY KEY (maKH),
         CONSTRAINT UQ_KhachHang_SDT UNIQUE (soDienThoai),
+        CONSTRAINT CK_KhachHang_SDT CHECK (
+            LEN(soDienThoai) = 10 AND soDienThoai LIKE '0[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
+        ),
         CONSTRAINT CK_KhachHang_Diem CHECK (diemTichLuy >= 0),
         CONSTRAINT CK_KhachHang_Hang CHECK (hangTV IN ('THUONG','HANG_1','HANG_2','HANG_3'))
     );
@@ -231,6 +233,12 @@ BEGIN
         tongTienThue        DECIMAL(18,2)     NOT NULL CONSTRAINT DF_HoaDon_TongThue DEFAULT (0),
         tongTien            DECIMAL(18,2)     NOT NULL CONSTRAINT DF_HoaDon_TongTien DEFAULT (0),
         CONSTRAINT PK_HoaDon PRIMARY KEY (maHoaDon),
+        CONSTRAINT CK_HoaDon_Ma CHECK (
+            LEN(maHoaDon) = 12 AND DATALENGTH(maHoaDon) = 12
+            AND maHoaDon LIKE 'HD[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
+            AND SUBSTRING(maHoaDon, 3, 6) = CONVERT(CHAR(6), ngayLap, 12)
+            AND RIGHT(maHoaDon, 4) <> '0000'
+        ),
         CONSTRAINT CK_HoaDon_Nguon CHECK (nguonDon IN ('TAI_QUAY','SHOPEE','TIKTOK')),
         CONSTRAINT CK_HoaDon_PhuongThuc CHECK (phuongThucThanhToan IS NULL OR phuongThucThanhToan IN ('TIEN_MAT','CHUYEN_KHOAN','QUA_SAN')),
         CONSTRAINT CK_HoaDon_TrangThai CHECK (trangThai IN ('CHO_THANH_TOAN','DA_THANH_TOAN','DANG_DOI_SOAT','HUY')),
@@ -239,7 +247,9 @@ BEGIN
             tienGiamHangTV >= 0 AND soDiemSuDung >= 0 AND tienGiamDiem >= 0 AND
             tienPhaiThu >= 0 AND soDiemDuocTich >= 0 AND tongTienTruocThue >= 0 AND
             tongTienThue >= 0 AND tongTien >= 0),
-        CONSTRAINT CK_HoaDon_KM_HangTV CHECK (maKhuyenMai IS NULL OR tienGiamHangTV = 0)
+        CONSTRAINT CK_HoaDon_KM_HangTV CHECK (maKhuyenMai IS NULL OR
+            (tienGiamHangTV = 0 AND soDiemSuDung = 0 AND tienGiamDiem = 0 AND soDiemDuocTich = 0)),
+        CONSTRAINT CK_HoaDon_DiemQuyDoi CHECK (tienGiamDiem = CONVERT(DECIMAL(18,2), soDiemSuDung) * 1000)
     );
 END;
 GO
@@ -279,6 +289,8 @@ BEGIN
         maHoaDon            VARCHAR(30)       NOT NULL,
         maDichVu            VARCHAR(20)       NOT NULL,
         maThuCung           VARCHAR(20)       NOT NULL,
+        maLichHen           VARCHAR(20)       NULL,
+        trangThaiBanGiao    VARCHAR(20)       NOT NULL CONSTRAINT DF_CTDV_BanGiao DEFAULT ('CHUA_BAN_GIAO'),
         maNVThoSpa          VARCHAR(20)       NULL,
         trangThaiThucHien   VARCHAR(16)       NOT NULL CONSTRAINT DF_CTDV_TrangThai DEFAULT ('CHO_LAM'),
         soLuong             INT               NOT NULL CONSTRAINT DF_CTDV_SoLuong DEFAULT (1),
@@ -291,7 +303,8 @@ BEGIN
         tienTruocThue       DECIMAL(18,2)     NOT NULL CONSTRAINT DF_CTDV_TruocThue DEFAULT (0),
         tienThue            DECIMAL(18,2)     NOT NULL CONSTRAINT DF_CTDV_TienThue DEFAULT (0),
         tienSauThue         AS (CONVERT(DECIMAL(18,2), tienTruocThue + tienThue)) PERSISTED,
-        CONSTRAINT PK_CTDV PRIMARY KEY (maChiTietDichVu),
+        CONSTRAINT PK_CTDV PRIMARY KEY (maHoaDon, maDichVu),
+        CONSTRAINT UQ_CTDV_Id UNIQUE (maChiTietDichVu),
         CONSTRAINT CK_CTDV_TrangThai CHECK (trangThaiThucHien IN ('CHO_LAM','DANG_LAM','HOAN_THANH','TU_CHOI')),
         CONSTRAINT CK_CTDV_1Luot CHECK (soLuong = 1),
         CONSTRAINT CK_CTDV_Gia CHECK (donGia >= 0),
@@ -337,6 +350,16 @@ IF COL_LENGTH(N'dbo.SanPham', N'giaNhap') IS NULL
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE parent_object_id=OBJECT_ID(N'dbo.SanPham') AND name=N'CK_SanPham_GiaNhap')
     ALTER TABLE dbo.SanPham WITH CHECK ADD CONSTRAINT CK_SanPham_GiaNhap CHECK (giaNhap >= 0);
+GO
+
+-- Tich hop 10_spa_flow_link.sql: duong lien ket tu dong HoaDon_DichVu -> LichHen.
+-- Chi bo sung neu bang cu (trong) thieu cot; khong can chay file 10 rieng.
+IF COL_LENGTH(N'dbo.ChiTietHoaDon_DichVu', N'maLichHen') IS NULL
+    ALTER TABLE dbo.ChiTietHoaDon_DichVu ADD maLichHen VARCHAR(20) NULL;
+GO
+IF COL_LENGTH(N'dbo.ChiTietHoaDon_DichVu', N'trangThaiBanGiao') IS NULL
+    ALTER TABLE dbo.ChiTietHoaDon_DichVu ADD trangThaiBanGiao VARCHAR(20) NOT NULL
+        CONSTRAINT DF_CTDV_BanGiao DEFAULT ('CHUA_BAN_GIAO') WITH VALUES;
 GO
 
 -- Indexes and derived views for operational queries.
@@ -466,6 +489,15 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name=N'FK_CTDV_ThuCung' AND parent_object_id=OBJECT_ID(N'dbo.ChiTietHoaDon_DichVu'))
     ALTER TABLE dbo.ChiTietHoaDon_DichVu WITH CHECK ADD CONSTRAINT FK_CTDV_ThuCung FOREIGN KEY (maThuCung) REFERENCES dbo.ThuCung(maThuCung);
 GO
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys
+    WHERE name=N'FK_CTDV_LichHen' AND parent_object_id=OBJECT_ID(N'dbo.ChiTietHoaDon_DichVu'))
+    ALTER TABLE dbo.ChiTietHoaDon_DichVu WITH CHECK ADD CONSTRAINT FK_CTDV_LichHen
+        FOREIGN KEY (maLichHen) REFERENCES dbo.LichHen(maLichHen);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes
+    WHERE name=N'IX_CTDV_LichHen' AND object_id=OBJECT_ID(N'dbo.ChiTietHoaDon_DichVu'))
+    CREATE INDEX IX_CTDV_LichHen ON dbo.ChiTietHoaDon_DichVu(maLichHen);
+GO
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name=N'FK_CTDV_ThoSpa' AND parent_object_id=OBJECT_ID(N'dbo.ChiTietHoaDon_DichVu'))
     ALTER TABLE dbo.ChiTietHoaDon_DichVu WITH CHECK ADD CONSTRAINT FK_CTDV_ThoSpa FOREIGN KEY (maNVThoSpa) REFERENCES dbo.NhanVien(maNV);
 GO
@@ -585,6 +617,9 @@ BEGIN
     );
 END;
 GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'dbo.HoaDon') AND name=N'IX_HoaDon_MaCa_NgayLap')
+    CREATE INDEX IX_HoaDon_MaCa_NgayLap ON dbo.HoaDon(maCa, ngayLap DESC, maHoaDon DESC);
+GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'dbo.HoaDon') AND name=N'IX_HoaDon_NgayLap')
     CREATE INDEX IX_HoaDon_NgayLap ON dbo.HoaDon(ngayLap DESC) INCLUDE (maKH, maNV, trangThai, tienPhaiThu);
 GO
@@ -608,7 +643,7 @@ BEGIN
 END;
 GO
 
-PRINT N'TiTi Pet schema ready: 14 core tables, extension DoiTra / LichSuNhapKho, 2 views, FK and reporting procedure.';
+PRINT N'TiTiPet: schema thong nhat da tao, kem lien ket SPA + ma hoa don HDYYMMDDNNNN.';
 SELECT DB_NAME() AS databaseName,
        (SELECT COUNT(*) FROM sys.tables WHERE schema_id=SCHEMA_ID('dbo')) AS soBang,
        (SELECT COUNT(*) FROM sys.views WHERE schema_id=SCHEMA_ID('dbo')) AS soView;

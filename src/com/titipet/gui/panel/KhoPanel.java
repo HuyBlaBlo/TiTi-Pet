@@ -514,7 +514,7 @@ public class KhoPanel extends JPanel {
      */
     public void capNhatKpiToanKho() {
         try {
-            List<SanPham> toanBoKho = khoHangService.layDanhSachSanPhamKho("");
+            List<SanPham> toanBoKho = khoHangService.layTatCaSanPhamKho();
             int countTong = 0;
             int countSapHet = 0;
             int countCanHan = 0;
@@ -740,6 +740,10 @@ public class KhoPanel extends JPanel {
             lblBadge.setText(status);
 
             switch (status) {
+                case "Ngừng kinh doanh" -> {
+                    lblBadge.setBackground(new Color(241, 245, 249));
+                    lblBadge.setForeground(new Color(100, 116, 139));
+                }
                 case "Hết hạn" -> {
                     lblBadge.setBackground(new Color(254, 242, 242));
                     lblBadge.setForeground(new Color(220, 38, 38));

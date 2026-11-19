@@ -80,6 +80,48 @@ public class HoaDonDAO {
         }
     }
 
+    /** Nam hoa don moi nhat cua CA DANG MO (khong lay hoa don cua ca khac). */
+    public List<HoaDonTomTat> tim5HoaDonTrongCa(String maNV, boolean quanLy,
+            String tuKhoa, String trangThai, String nguonDon, String phuongThuc) throws SQLException {
+        String sql = """
+            SELECT TOP (5) h.maHoaDon, h.ngayLap, h.maKH, kh.hoTen, kh.soDienThoai,
+                           h.nguonDon, h.phuongThucThanhToan, h.tienPhaiThu, h.trangThai
+            FROM dbo.HoaDon h
+            JOIN dbo.KhachHang kh ON kh.maKH = h.maKH
+            JOIN dbo.CaLamViec c ON c.maCa = h.maCa
+            WHERE c.trangThai = 'DANG_MO' AND (? = 1 OR c.maNV = ?)
+              AND (? = '' OR h.maHoaDon LIKE ? OR kh.soDienThoai LIKE ? OR kh.hoTen LIKE ?)
+              AND (? = '' OR h.trangThai = ?)
+              AND (? = '' OR h.nguonDon = ?)
+              AND (? = '' OR h.phuongThucThanhToan = ?)
+            ORDER BY h.ngayLap DESC, h.maHoaDon DESC
+            """;
+        List<HoaDonTomTat> result = new ArrayList<>();
+        synchronized (ConnectDB.class) {
+            try (PreparedStatement ps = ketNoiChung().prepareStatement(sql)) {
+                ps.setInt(1, quanLy ? 1 : 0);
+                ps.setString(2, maNV);
+                String keyword = tuKhoa == null ? "" : tuKhoa.strip();
+                ps.setString(3, keyword);
+                for (int i=4; i<=6; i++) ps.setNString(i, "%" + keyword + "%");
+                String status = trangThai == null ? "" : trangThai;
+                ps.setString(7, status); ps.setString(8, status);
+                String channel = nguonDon == null ? "" : nguonDon;
+                ps.setString(9, channel); ps.setString(10, channel);
+                String payment = phuongThuc == null ? "" : phuongThuc;
+                ps.setString(11, payment); ps.setString(12, payment);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) result.add(new HoaDonTomTat(rs.getString("maHoaDon"),
+                        docThoiGian(rs,"ngayLap"), rs.getString("maKH"),
+                        rs.getString("hoTen"), rs.getString("soDienThoai"),
+                        rs.getString("nguonDon"), rs.getString("phuongThucThanhToan"),
+                        rs.getBigDecimal("tienPhaiThu"), rs.getString("trangThai")));
+                }
+            }
+        }
+        return result;
+    }
+
     public Optional<HoaDonChiTiet> chiTiet(String maHoaDon) throws SQLException {
         String sql = """
                 SELECT h.*, kh.hoTen AS tenKhach, kh.soDienThoai,

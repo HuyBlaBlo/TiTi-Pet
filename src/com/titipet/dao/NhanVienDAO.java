@@ -11,32 +11,26 @@ import java.sql.SQLException;
 import java.util.Optional;
 
 public class NhanVienDAO {
-    private static final String dTIM_THEO_TEN_DANG_NHAP = """
-            SELECT maNV, tenDangNhap, matKhau, hoTen, vaiTro 
-            FROM dbo.NhanVien 
-            WHERE tenDangNhap = ? AND dangHoatDong = 1
+    private static final String TIM_THEO_MA_NV = """
+            SELECT maNV, tenDangNhap, matKhau, hoTen, vaiTro
+            FROM dbo.NhanVien
+            WHERE maNV = ? AND dangHoatDong = 1
             """;
 
-    private static final String TIM_THEO_TEN_DANG_NHAP =
-            "SELECT maNV, tenDangNhap, matKhau, hoTen, vaiTro " +
-                    "FROM NhanVien " +
-                    "WHERE tenDangNhap = ? AND dangHoatDong = 1";
-
-
-    /**
-     * Tìm một nhân viên đang hoạt động theo tên đăng nhập
-     */
-    public Optional<NhanVien> timTheoTenDangNhap(String tenDangNhap) throws  SQLException{
-        Connection connection = getActiveConnection();
-        try(PreparedStatement statement = connection.prepareStatement(TIM_THEO_TEN_DANG_NHAP)){
-            statement.setString(1,tenDangNhap);
-            try(ResultSet resultSet = statement.executeQuery()){
-                if(resultSet.next()){
-                    return Optional.of(mapNhanVien(resultSet));
-                }
+    /** Tra theo ma nhan su, role duoc doc tu tung tai khoan trong SQL Server. */
+    public Optional<NhanVien> timTheoMaNhanVien(String maNV) throws SQLException {
+        if (maNV == null || maNV.isBlank()) return Optional.empty();
+        try (PreparedStatement statement = getActiveConnection().prepareStatement(TIM_THEO_MA_NV)) {
+            statement.setString(1, maNV.strip().toUpperCase(java.util.Locale.ROOT));
+            try (ResultSet rs = statement.executeQuery()) {
+                return rs.next() ? Optional.of(mapNhanVien(rs)) : Optional.empty();
             }
         }
-        return Optional.empty();
+    }
+
+    /** Alias tuong thich cac doan code cu. */
+    public Optional<NhanVien> timTheoTenDangNhap(String maNV) throws SQLException {
+        return timTheoMaNhanVien(maNV);
     }
 
     private Connection getActiveConnection() throws SQLException {

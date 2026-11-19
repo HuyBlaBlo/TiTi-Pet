@@ -31,6 +31,12 @@ public class LichThoSpaDAO {
             FROM dbo.ChiTietHoaDon_DichVu d
             JOIN dbo.HoaDon h ON h.maHoaDon = d.maHoaDon
             WHERE h.trangThai = 'DA_THANH_TOAN'
+              AND ((EXISTS (SELECT 1 FROM dbo.LichHen l
+                    WHERE l.maLichHen = d.maLichHen
+                      AND l.thoiGianHen >= CONVERT(date, SYSDATETIME())
+                      AND l.thoiGianHen < DATEADD(day, 1, CONVERT(date, SYSDATETIME()))))
+                OR (d.maLichHen IS NULL AND h.ngayLap >= CONVERT(date, SYSDATETIME())
+                      AND h.ngayLap < DATEADD(day, 1, CONVERT(date, SYSDATETIME()))))
               AND (? IS NULL OR d.maNVThoSpa = ?)
             """;
         synchronized (ConnectDB.class) {
@@ -65,6 +71,11 @@ public class LichThoSpaDAO {
             LEFT JOIN dbo.NhanVien nv ON nv.maNV = d.maNVThoSpa
             LEFT JOIN dbo.LichHen l ON l.maLichHen = d.maLichHen
             WHERE h.trangThai = 'DA_THANH_TOAN'
+              AND ((l.thoiGianHen >= CONVERT(date, SYSDATETIME())
+                    AND l.thoiGianHen < DATEADD(day, 1, CONVERT(date, SYSDATETIME())))
+                OR (l.maLichHen IS NULL
+                    AND h.ngayLap >= CONVERT(date, SYSDATETIME())
+                    AND h.ngayLap < DATEADD(day, 1, CONVERT(date, SYSDATETIME()))))
               AND (? IS NULL OR d.maNVThoSpa = ?)
             ORDER BY COALESCE(l.thoiGianHen, h.ngayLap) DESC, d.maChiTietDichVu
             """;

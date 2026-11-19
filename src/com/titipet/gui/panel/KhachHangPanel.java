@@ -559,9 +559,11 @@ public class KhachHangPanel extends JPanel{
         // Xóa trắng bảng cũ trước khi nạp lại
         tableModel.setRowCount(0);
 
+        String phone = keyword == null ? "" : keyword.strip();
+        if (!phone.matches("[0-9]{6,15}")) return;
         try {
             // Lấy danh sách dòng dữ liệu theo từ khóa tìm kiếm trực tiếp từ KhachHangService
-            List<Object[]> rows = khachHangService.layDanhSachHienThiBang(keyword);
+            List<Object[]> rows = khachHangService.layDanhSachHienThiBang(phone);
 
             for (Object[] r : rows) {
                 HangTV hang = (HangTV) r[3];

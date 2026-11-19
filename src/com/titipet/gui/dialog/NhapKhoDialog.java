@@ -222,7 +222,7 @@ public class NhapKhoDialog extends JDialog {
     private void taiDanhSachSanPham() {
         cbSanPham.removeAllItems();
         try {
-            List<SanPham> ds = khoHangService.layDanhSachSanPhamKho("");
+            List<SanPham> ds = khoHangService.layTatCaSanPhamKho();
             for (SanPham sp : ds) {
                 cbSanPham.addItem(sp);
             }

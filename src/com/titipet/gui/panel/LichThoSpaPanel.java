@@ -40,20 +40,42 @@ public class LichThoSpaPanel extends JPanel {
         setLayout(new BorderLayout());
         setBackground(BG);
 
-        JPanel content = new JPanel();
-        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        // BorderLayout giữ tiêu đề sát đầu trang và ưu tiên chiều cao cho bảng điều phối.
+        JPanel content = new JPanel(new BorderLayout(0, 12));
         content.setBackground(BG);
-        content.setBorder(new EmptyBorder(20, 25, 20, 25));
+        content.setBorder(new EmptyBorder(12, 25, 15, 25));
 
-        content.add(taoHeader());
-        content.add(Box.createVerticalStrut(18));
-        content.add(taoThongBao());
-        content.add(Box.createVerticalStrut(15));
-        content.add(taoKhuVucTrangThai());
-        content.add(Box.createVerticalStrut(15));
-        content.add(taoQuyTac());
-        content.add(Box.createVerticalStrut(15));
-        content.add(taoFooter());
+        JPanel above = new JPanel();
+        above.setLayout(new BoxLayout(above, BoxLayout.Y_AXIS));
+        above.setBackground(BG);
+        JPanel header = taoHeader();
+        header.setAlignmentX(Component.LEFT_ALIGNMENT);
+        header.setPreferredSize(new Dimension(100, 83));
+        header.setMaximumSize(new Dimension(Integer.MAX_VALUE, 83));
+        above.add(header);
+        above.add(Box.createVerticalStrut(10));
+        JPanel notice = taoThongBao();
+        notice.setAlignmentX(Component.LEFT_ALIGNMENT);
+        notice.setPreferredSize(new Dimension(100, 44));
+        notice.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
+        above.add(notice);
+        content.add(above, BorderLayout.NORTH);
+
+        JPanel board = taoKhuVucTrangThai();
+        board.setMinimumSize(new Dimension(700, 260));
+        content.add(board, BorderLayout.CENTER);
+
+        JPanel below = new JPanel();
+        below.setLayout(new BoxLayout(below, BoxLayout.Y_AXIS));
+        below.setBackground(BG);
+        JPanel rules = taoQuyTac();
+        rules.setAlignmentX(Component.LEFT_ALIGNMENT);
+        rules.setPreferredSize(new Dimension(100, 141));
+        rules.setMaximumSize(new Dimension(Integer.MAX_VALUE, 141));
+        below.add(rules);
+        below.add(Box.createVerticalStrut(8));
+        below.add(taoFooter());
+        content.add(below, BorderLayout.SOUTH);
 
         add(content, BorderLayout.CENTER);
 
@@ -87,7 +109,7 @@ public class LichThoSpaPanel extends JPanel {
 
         JPanel titlePanel = new JPanel(new BorderLayout());
         titlePanel.setBackground(BG);
-        titlePanel.setBorder(new EmptyBorder(18, 0, 5, 0));
+        titlePanel.setBorder(new EmptyBorder(3, 0, 5, 0));
 
         JPanel titleLeft = new JPanel();
         titleLeft.setLayout(new BoxLayout(titleLeft, BoxLayout.Y_AXIS));
@@ -155,7 +177,7 @@ public class LichThoSpaPanel extends JPanel {
     private JPanel taoKhuVucTrangThai() {
         JPanel board = new JPanel(new GridLayout(1, 4, 12, 0));
         board.setBackground(BG);
-        board.setMaximumSize(new Dimension(Integer.MAX_VALUE, 280));
+        board.setPreferredSize(new Dimension(1000, 330));
 
         pnlChoLam = new JPanel();
         pnlDangLam = new JPanel();

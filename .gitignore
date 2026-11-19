@@ -68,3 +68,4 @@ $RECYCLE.BIN/
 # Database credentials local to each machine
 /config/db.properties
 /config/db.properties.local
+config/invoice.key

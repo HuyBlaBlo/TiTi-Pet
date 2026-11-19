@@ -117,6 +117,14 @@ public class BanHangService {
         }
     }
 
+    public List<SanPhamBanHang> laySanPhamBanChay(int gioiHan) {
+        try {
+            return sanPhamDAO.laySanPhamBanChay(gioiHan);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Không thể tải sản phẩm bán chạy.", e);
+        }
+    }
+
     /**
      * 2. Kiểm tra điều kiện bán sản phẩm.
      */

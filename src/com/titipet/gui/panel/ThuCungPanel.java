@@ -103,7 +103,7 @@ public class ThuCungPanel extends JPanel{
         txtTimKiem = new JTextField();
         txtTimKiem.setPreferredSize(new Dimension(280, 40));
         txtTimKiem.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        txtTimKiem.putClientProperty("JTextField.placeholderText", "Tìm theo tên bé, tên chủ, SĐT...");
+        txtTimKiem.putClientProperty("JTextField.placeholderText", "Nhập SĐT chủ nuôi (ít nhất 6 số)...");
         txtTimKiem.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(COLOR_CARD_BORDER, 1),
                 new EmptyBorder(0, 12, 0, 12)
@@ -166,6 +166,14 @@ public class ThuCungPanel extends JPanel{
         gridContainer.removeAll();
 
         String tuKhoa = txtTimKiem.getText().trim();
+        if (!tuKhoa.matches("[0-9]{6,15}")) {
+            JLabel hint = new JLabel("Nhập ít nhất 6 chữ số điện thoại chủ nuôi để xem hồ sơ thú cưng.");
+            hint.setForeground(COLOR_TEXT_MUTED);
+            gridContainer.add(hint);
+            gridContainer.revalidate();
+            gridContainer.repaint();
+            return;
+        }
         String loaiLoc = (String) cbLocLoai.getSelectedItem();
 
         try {

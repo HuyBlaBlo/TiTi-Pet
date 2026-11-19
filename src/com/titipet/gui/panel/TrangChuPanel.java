@@ -12,6 +12,8 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
@@ -41,7 +43,7 @@ public class TrangChuPanel extends JPanel {
     private final JPanel danhSachCanhBao = danhSach();
     private final JPanel danhSachHoaDon = danhSach();
     private SwingWorker<TrangChuService.DuLieuTrangChu, Void> tacVuTai;
-
+    
     /** Nhận cùng phiên đăng nhập với MainFrame để Service tự lấy đúng mã và vai trò. */
     public TrangChuPanel(AuthService authService, String tenNhanVien, Consumer<String> chonMenu) {
         Objects.requireNonNull(authService, "Cần phiên đăng nhập để mở Trang chủ.");
@@ -190,6 +192,12 @@ public class TrangChuPanel extends JPanel {
             card.add(giaTriThe[i]);
             card.add(label(tieuDe[i], 12, MUTED, false));
             card.add(ghiChuThe[i]);
+            final int viTri = i;
+            MouseAdapter nhan = new MouseAdapter() {
+                @Override public void mouseClicked(MouseEvent e) { xemNhanh(viTri); }
+            };
+            ganBamNhanh(card, nhan);
+            card.setToolTipText("Nhấn để mở trực tiếp danh sách tương ứng");
             p.add(card);
         }
         return p;
@@ -350,6 +358,30 @@ public class TrangChuPanel extends JPanel {
         }
         revalidate();
         repaint();
+    }
+
+    private static void ganBamNhanh(Component component, MouseAdapter handler) {
+        component.addMouseListener(handler);
+        component.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) ganBamNhanh(child, handler);
+        }
+    }
+
+    /** Các thẻ thống kê mở trực tiếp màn chi tiết; không xuất hiện popup trung gian. */
+    private void xemNhanh(int viTri) {
+        String menu;
+        if (vaiTro == VaiTro.THO_SPA) {
+            menu = MainFrame.DIEU_PHOI_SPA;
+        } else {
+            menu = switch (viTri) {
+                case 0 -> MainFrame.THU_CUNG;
+                case 1 -> MainFrame.LICH_HEN;
+                case 2 -> MainFrame.HOA_DON;
+                default -> MainFrame.DIEU_PHOI_SPA;
+            };
+        }
+        chonMenu.accept(menu);
     }
 
     private static JPanel khung(String tieuDe, String phuDe) {

@@ -70,7 +70,7 @@ public class LoginFrame extends JFrame {
         private final JLabel lblThongBao = new JLabel(" ");
         private final JLabel title = new JLabel("Đăng nhập");
         private final JLabel subtitle = new JLabel("Chào mừng bạn quay trở lại !");
-        private final JLabel usernameLabel = new JLabel("Tên đăng nhập");
+        private final JLabel usernameLabel = new JLabel("Mã nhân sự");
         private final JLabel passwordLabel = new JLabel("Mật khẩu");
         private final JLabel footerLabel = new JLabel("2026 Titi Pet - Hệ thống quản lý thú cưng");
         private final JPanel footer = new JPanel(new GridBagLayout());
@@ -98,7 +98,7 @@ public class LoginFrame extends JFrame {
             usernameLabel.setLabelFor(txtTenDangNhap);
             passwordLabel.setLabelFor(txtMatKhau);
 
-            configureField(txtTenDangNhap, "Nhập tên đăng nhập");
+            configureField(txtTenDangNhap, "Nhập mã nhân sự (NV001...)");
             configureField(txtMatKhau, "Nhập mật khẩu");
             txtTenDangNhap.setName("tenDangNhap");
             txtMatKhau.setName("matKhau");

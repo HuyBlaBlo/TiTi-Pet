@@ -15,6 +15,7 @@ public abstract class SanPham {
     private BigDecimal thueSuat;
     private LoaiSanPham loaiSanPham;
     private int nguongCanhBaoTon;
+    private boolean dangKinhDoanh = true;
 
     public SanPham() {
     }
@@ -29,6 +30,14 @@ public abstract class SanPham {
         this.thueSuat = thueSuat;
         this.loaiSanPham = loaiSanPham;
         this.nguongCanhBaoTon = nguongCanhBaoTon;
+    }
+
+    public boolean isDangKinhDoanh() {
+        return dangKinhDoanh;
+    }
+
+    public void setDangKinhDoanh(boolean dangKinhDoanh) {
+        this.dangKinhDoanh = dangKinhDoanh;
     }
 
     public int getSoLuongTonKho() {
