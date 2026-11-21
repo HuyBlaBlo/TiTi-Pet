@@ -10,6 +10,7 @@ import com.titipet.entity.enums.VaiTro;
 import com.titipet.gui.dialog.CapNhatSanPhamDialog;
 import com.titipet.gui.dialog.ThemSanPhamDialog;
 import com.titipet.gui.dialog.ThemDichVuSpaDialog;
+import com.titipet.gui.dialog.QuanLyDichVuSpaDialog;
 import com.titipet.util.RoundedPannel;
 
 import javax.swing.*;
@@ -200,7 +201,10 @@ public class SanPhamPanel extends JPanel {
         leftTitle.add(lblTitle);
 
         btnTaoDichVu = createSolidButton("+ Tạo dịch vụ", COLOR_PRIMARY_BLUE, Color.WHITE);
-//        btnTaoDichVu.addActionListener(e -> moDialogThemDichVuSpa());
+        btnTaoDichVu.addActionListener(e -> {
+            if (!laQuanLy()) return;
+            if (QuanLyDichVuSpaDialog.hienThi(this, sanPhamService, null)) taiDuLieuSpa();
+        });
 
         topBar.add(leftTitle, BorderLayout.WEST);
         topBar.add(btnTaoDichVu, BorderLayout.EAST);
@@ -599,9 +603,13 @@ public class SanPhamPanel extends JPanel {
                             "Từ chối", JOptionPane.WARNING_MESSAGE);
                     return;
                 }
-                JOptionPane.showMessageDialog(SanPhamPanel.this,
-                        "Mở chỉnh sửa đơn giá và thông tin dịch vụ Spa: " + maDV,
-                        "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                DichVuSpa existing = sanPhamService.timDichVuSpaTheoMa(maDV);
+                if (existing == null) {
+                    JOptionPane.showMessageDialog(SanPhamPanel.this, "Không tìm thấy dịch vụ: " + maDV);
+                    return;
+                }
+                if (QuanLyDichVuSpaDialog.hienThi(SanPhamPanel.this, sanPhamService, existing))
+                    taiDuLieuSpa();
             });
         }
 

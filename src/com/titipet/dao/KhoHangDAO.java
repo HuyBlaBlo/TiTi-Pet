@@ -18,18 +18,33 @@ import java.util.List;
 public class KhoHangDAO {
 
     public List<SanPham> layDanhSachSanPhamKho(String keyword) throws SQLException {
+        return timSanPhamKho(keyword, true);
+    }
+
+    /** Dùng riêng cho KPI và danh sách nhập kho: không bị giới hạn bởi cảnh báo. */
+    public List<SanPham> layTatCaSanPhamKho() throws SQLException {
+        return timSanPhamKho("", false);
+    }
+
+    private List<SanPham> timSanPhamKho(String keyword, boolean chiCanCanhBao) throws SQLException {
         List<SanPham> danhSach = new ArrayList<>();
         String sql = "SELECT sp.maSanPham, sp.tenSanPham, sp.giaBan, sp.giaNhap, sp.soLuongTonKho, "
-                   + "       sp.maVach, sp.nguongCanhBaoTon, sp.thueSuat, sp.loaiSanPham, "
+                   + "       sp.maVach, sp.nguongCanhBaoTon, sp.thueSuat, sp.loaiSanPham, sp.dangKinhDoanh, "
                    + "       ta.hanSuDung, ta.trongLuong, "
                    + "       pk.kichThuoc, pk.mauSac, pk.chatLieu "
                    + "FROM dbo.SanPham sp "
                    + "LEFT JOIN dbo.ThucAn ta ON sp.maSanPham = ta.maSanPham "
                    + "LEFT JOIN dbo.PhuKien pk ON sp.maSanPham = pk.maSanPham "
-                   + "WHERE sp.dangKinhDoanh = 1 ";
+                   + "WHERE 1 = 1 ";
 
-        if (keyword != null && !keyword.trim().isEmpty()) {
+        // Mặc định chỉ lấy bất thường. Có từ khóa thì tìm tất cả trạng thái,
+        // bao gồm cả sản phẩm bình thường và ngừng kinh doanh.
+        boolean dangTim = keyword != null && !keyword.trim().isEmpty();
+        if (dangTim) {
             sql += " AND (sp.maSanPham LIKE ? OR sp.tenSanPham LIKE ? OR sp.maVach LIKE ?) ";
+        } else if (chiCanCanhBao) {
+            sql += " AND (sp.dangKinhDoanh = 0 OR sp.soLuongTonKho <= sp.nguongCanhBaoTon "
+                 + "OR (ta.hanSuDung IS NOT NULL AND ta.hanSuDung <= DATEADD(DAY, 30, CONVERT(date, GETDATE())))) ";
         }
         sql += " ORDER BY sp.maSanPham ASC";
 
@@ -72,6 +87,7 @@ public class KhoHangDAO {
                         ta.setNguongCanhBaoTon(nguong);
                         ta.setThueSuat(thue);
                         ta.setLoaiSanPham(LoaiSanPham.THUC_AN);
+                        ta.setDangKinhDoanh(rs.getBoolean("dangKinhDoanh"));
 
                         java.sql.Date d = rs.getDate("hanSuDung");
                         if (d != null) {
@@ -90,6 +106,7 @@ public class KhoHangDAO {
                         pk.setNguongCanhBaoTon(nguong);
                         pk.setThueSuat(thue);
                         pk.setLoaiSanPham(LoaiSanPham.PHU_KIEN);
+                        pk.setDangKinhDoanh(rs.getBoolean("dangKinhDoanh"));
                         pk.setKichThuoc(rs.getString("kichThuoc"));
                         pk.setMauSac(rs.getString("mauSac"));
                         pk.setChatLieu(rs.getString("chatLieu"));

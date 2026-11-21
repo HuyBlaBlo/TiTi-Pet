@@ -493,7 +493,17 @@ public class TiepNhanSpaPanel extends JPanel {
             List<LichHen> today=lichHenDAO.layLichHenTheoNgay(LocalDate.now());
             for(LichHen lh:today)if(lh.getTrangThai()==TrangThaiLichHen.CHO_TIEP_NHAN)danhSachCho.add(lh);
             hienThiDanhSachCho(); capNhatThongKe();
-            if(!danhSachCho.isEmpty()&&lichHenDangChon==null&&!khachVangLai)chonLichHen(danhSachCho.get(0));
+            // Khong giu lich da thanh toan/tiep nhan trong form sau khi refresh.
+            if (lichHenDangChon != null && danhSachCho.stream()
+                    .noneMatch(lh -> lh.getMaLichHen().equals(lichHenDangChon.getMaLichHen()))) {
+                lichHenDangChon = null;
+            }
+            if (!danhSachCho.isEmpty() && lichHenDangChon == null && !khachVangLai)
+                chonLichHen(danhSachCho.get(0));
+            if (danhSachCho.isEmpty() && !khachVangLai) {
+                lblMaLich.setText("—"); lblTenKhach.setText("Chưa có khách chờ hôm nay");
+                lblTenThuCung.setText("—"); lblGioHen.setText("—");
+            }
         }catch(SQLException ex){showError("Không thể tải dữ liệu tiếp nhận: "+ex.getMessage());}
     }
     
@@ -501,7 +511,7 @@ public class TiepNhanSpaPanel extends JPanel {
     private void hienThiDanhSachCho(){
         danhSachKhachPanel.removeAll();
         if(danhSachCho.isEmpty()){
-            JLabel empty=new JLabel("Hiện không có khách chờ.");
+            JLabel empty=new JLabel("Hôm nay không còn lịch chờ tiếp nhận.");
             empty.setFont(new Font("Segoe UI",Font.PLAIN,10)); empty.setForeground(MUTED);
             empty.setBorder(new EmptyBorder(10,4,10,4)); danhSachKhachPanel.add(empty);
         }else{

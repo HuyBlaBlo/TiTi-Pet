@@ -54,6 +54,26 @@ public final class HoaDonService {
         return dao.timHoaDon(key, status, GIOI_HAN);
     }
 
+    /** Xem 5 giao dich moi nhat trong ca dang mo, giu quyen theo ma nhan vien. */
+    public List<HoaDonTomTat> tim5TrongCa(String tuKhoa, String trangThai,
+                                          String nguonDon, String phuongThuc) throws SQLException {
+        kiemTraQuyen();
+        if (tuKhoa != null && tuKhoa.length() > 120)
+            throw new IllegalArgumentException("Từ khóa quá dài.");
+        if (!List.of("", "CHO_THANH_TOAN", "DA_THANH_TOAN", "DANG_DOI_SOAT", "HUY")
+                .contains(trangThai == null ? "" : trangThai))
+            throw new IllegalArgumentException("Trạng thái hóa đơn không hợp lệ.");
+        if (!List.of("", "TAI_QUAY", "SHOPEE", "TIKTOK")
+                .contains(nguonDon == null ? "" : nguonDon))
+            throw new IllegalArgumentException("Kênh bán hàng không hợp lệ.");
+        if (!List.of("", "TIEN_MAT", "CHUYEN_KHOAN", "QUA_SAN")
+                .contains(phuongThuc == null ? "" : phuongThuc))
+            throw new IllegalArgumentException("Hình thức thanh toán không hợp lệ.");
+        return dao.tim5HoaDonTrongCa(nguoiDangNhap.getMaNV(),
+            nguoiDangNhap.getVaiTro() == VaiTro.QUAN_LY,
+            tuKhoa, trangThai, nguonDon, phuongThuc);
+    }
+
     public HoaDonChiTiet chiTiet(String maHoaDon) throws SQLException {
         kiemTraQuyen();
         if (maHoaDon == null || maHoaDon.isBlank() || maHoaDon.length() > 30) {
@@ -114,7 +134,7 @@ public final class HoaDonService {
         s.append("Giảm hạng TV: ").append(tien(h.tienGiamHangTV())).append(" đ\n");
         s.append("Đã sử dụng: ").append(h.soDiemSuDung()).append(" điểm (giảm ")
                 .append(tien(h.tienGiamDiem())).append(" đ)\n");
-        s.append("Thuế: ").append(tien(h.tongTienThue())).append(" đ\n");
+        s.append("Thuế GTGT (8%): ").append(tien(h.tongTienThue())).append(" đ\n");
         s.append("PHẢI THU: ").append(tien(h.tienPhaiThu())).append(" đ\n");
         s.append("Điểm được tích: +").append(h.soDiemDuocTich()).append('\n');
         s.append("------------------------------------------------------------\n");

@@ -1,6 +1,7 @@
 package com.titipet.gui.panel;
 
 import com.titipet.bus.HoaDonService;
+import com.titipet.gui.dialog.HoaDonChiTietDialog;
 import com.titipet.dao.HoaDonDAO.HoaDonChiTiet;
 import com.titipet.dao.HoaDonDAO.HoaDonTomTat;
 
@@ -32,6 +33,10 @@ public final class HoaDonPanel extends JPanel {
     private final JTextField timKiem = new JTextField();
     private final JComboBox<String> locTrangThai = new JComboBox<>(new String[] {
             "Đã thanh toán", "Tất cả trạng thái", "Chờ thanh toán", "Đang đối soát", "Đã hủy"});
+    private final JComboBox<String> locKenh = new JComboBox<>(new String[] {
+            "Tất cả kênh", "Tại quầy", "Shopee", "TikTok"});
+    private final JComboBox<String> locThanhToan = new JComboBox<>(new String[] {
+            "Mọi hình thức", "Tiền mặt", "Chuyển khoản", "Qua sàn"});
     private final DefaultTableModel model = new DefaultTableModel(
             new String[] {"MÃ HÓA ĐƠN", "THỜI GIAN", "KHÁCH HÀNG", "KÊNH",
                     "THANH TOÁN", "TỔNG TIỀN", "TRẠNG THÁI", "THAO TÁC"}, 0) {
@@ -81,7 +86,7 @@ public final class HoaDonPanel extends JPanel {
         JPanel header = trong(new BorderLayout(12, 0));
         JPanel captions = trong(new GridLayout(2, 1, 0, 4));
         captions.add(chu("Danh sách hóa đơn", 16, NAVY, true));
-        captions.add(chu("Hóa đơn từ POS, Spa và các kênh bán hàng; hiển thị tối đa 200 bản ghi gần nhất", 11, MUTED, false));
+        captions.add(chu("Chỉ hiển thị 5 hóa đơn mới nhất của ca đang mở; lọc theo trạng thái, kênh và thanh toán", 11, MUTED, false));
         header.add(captions, BorderLayout.CENTER);
         JButton csv = nut("Xuất CSV", WHITE, NAVY);
         csv.addActionListener(e -> xuatCsv());
@@ -103,6 +108,16 @@ public final class HoaDonPanel extends JPanel {
         searchWithButton.add(searchArea, BorderLayout.CENTER);
         searchWithButton.add(search, BorderLayout.EAST);
         controls.add(searchWithButton, BorderLayout.CENTER);
+        JPanel advanced = trong(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        advanced.add(chu("Kênh bán", 11, MUTED, true));
+        locKenh.setPreferredSize(new Dimension(140, 34));
+        advanced.add(locKenh);
+        advanced.add(chu("Thanh toán", 11, MUTED, true));
+        locThanhToan.setPreferredSize(new Dimension(155, 34));
+        advanced.add(locThanhToan);
+        locKenh.addActionListener(e -> taiDuLieu());
+        locThanhToan.addActionListener(e -> taiDuLieu());
+        controls.add(advanced, BorderLayout.SOUTH);
         search.addActionListener(e -> taiDuLieu());
         timKiem.addActionListener(e -> taiDuLieu());
         locTrangThai.addActionListener(e -> taiDuLieu());
@@ -178,10 +193,16 @@ public final class HoaDonPanel extends JPanel {
         final int phien = ++phienTai;
         final String keyword = timKiem.getText();
         final String filter = maTrangThai();
-        trangThai.setText("Đang truy vấn SQL Server...");
+        final String channel = switch (locKenh.getSelectedIndex()) {
+            case 1 -> "TAI_QUAY"; case 2 -> "SHOPEE"; case 3 -> "TIKTOK"; default -> "";
+        };
+        final String payment = switch (locThanhToan.getSelectedIndex()) {
+            case 1 -> "TIEN_MAT"; case 2 -> "CHUYEN_KHOAN"; case 3 -> "QUA_SAN"; default -> "";
+        };
+        trangThai.setText("Đang truy vấn hóa đơn trong ca mở...");
         new SwingWorker<List<HoaDonTomTat>, Void>() {
             @Override protected List<HoaDonTomTat> doInBackground() throws Exception {
-                return service.timKiem(keyword, filter);
+                return service.tim5TrongCa(keyword, filter, channel, payment);
             }
             @Override protected void done() {
                 if (phien != phienTai) return;
@@ -199,9 +220,9 @@ public final class HoaDonPanel extends JPanel {
                         });
                     }
                     hienThiBang();
-                    tongSo.setText(duLieu.size() + " hóa đơn (tối đa 200)");
+                    tongSo.setText(duLieu.size() + " hóa đơn (5 mới nhất của ca đang mở)");
                     trangThai.setText(duLieu.isEmpty()
-                            ? "Không tìm thấy hóa đơn phù hợp." : "Đã cập nhật từ SQL Server.");
+                            ? "Ca hiện tại chưa có hóa đơn phù hợp (hoặc chưa mở ca)." : "Đã cập nhật từ SQL Server.");
                 } catch (InterruptedException err) {
                     Thread.currentThread().interrupt();
                 } catch (ExecutionException err) {
@@ -276,40 +297,7 @@ public final class HoaDonPanel extends JPanel {
     }
 
     private void moHopThoai(HoaDonChiTiet h) {
-        Window owner = SwingUtilities.getWindowAncestor(this);
-        JDialog dialog = new JDialog(owner, "Chi tiết hóa đơn · " + h.maHoaDon(),
-                Dialog.ModalityType.APPLICATION_MODAL);
-        dialog.setLayout(new BorderLayout(0, 12));
-        dialog.getContentPane().setBackground(WHITE);
-        JTextArea receipt = new JTextArea(service.noiDungHoaDon(h));
-        receipt.setEditable(false);
-        receipt.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
-        receipt.setForeground(NAVY);
-        receipt.setBackground(WHITE);
-        receipt.setMargin(new Insets(18, 20, 18, 20));
-        JScrollPane scroll = new JScrollPane(receipt);
-        scroll.setBorder(BorderFactory.createEmptyBorder());
-        dialog.add(scroll, BorderLayout.CENTER);
-
-        JPanel actions = trong(new FlowLayout(FlowLayout.RIGHT, 10, 8));
-        actions.setBorder(new EmptyBorder(5, 15, 12, 15));
-        JButton close = nut("Đóng", WHITE, NAVY);
-        JButton print = nut("In hóa đơn", BLUE, WHITE);
-        close.addActionListener(e -> dialog.dispose());
-        print.addActionListener(e -> {
-            try {
-                receipt.print(null, null, true, null, null, true);
-            } catch (java.awt.print.PrinterException error) {
-                JOptionPane.showMessageDialog(dialog, "Không thể in: " + error.getMessage());
-            }
-        });
-        actions.add(close);
-        actions.add(print);
-        dialog.add(actions, BorderLayout.SOUTH);
-        dialog.setSize(665, 700);
-        dialog.setMinimumSize(new Dimension(520, 480));
-        dialog.setLocationRelativeTo(this);
-        dialog.setVisible(true);
+        HoaDonChiTietDialog.hienThi(this, h);
     }
 
     private void xuatCsv() {

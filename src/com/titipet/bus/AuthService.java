@@ -32,7 +32,7 @@ public class AuthService {
         NhanVien nhanVien;
         try{
             nhanVien = nhanVienDAO
-                    .timTheoTenDangNhap(tenDangNhap.trim())
+                    .timTheoMaNhanVien(tenDangNhap.trim())
                     .orElseThrow(AuthService::thongTinDangNhapKhongDung);
         } catch (SQLException e) {
             throw new RuntimeException(
@@ -52,7 +52,7 @@ public class AuthService {
     //
     private void validateInput(String tenDangNhap, String matKhau) {
         if(null == tenDangNhap || tenDangNhap.isBlank()){
-            throw new IllegalArgumentException("Vui lòng nhập tên đăng nhập");
+            throw new IllegalArgumentException("Vui lòng nhập mã nhân sự");
         }
         if(null == matKhau || matKhau.isBlank()) {
             throw new IllegalArgumentException("Vui lòng nhập mật khẩu!");
@@ -80,7 +80,7 @@ public class AuthService {
     }
 
     private static IllegalArgumentException thongTinDangNhapKhongDung(){
-        return new IllegalArgumentException("Tên đăng nhập hoặc mật khẩu không đúng");
+        return new IllegalArgumentException("Mã nhân sự hoặc mật khẩu không đúng");
     }
 
 }

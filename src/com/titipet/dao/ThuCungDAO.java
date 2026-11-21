@@ -17,29 +17,20 @@ public class ThuCungDAO {
      */
     public List<ThuCung> layDanhSachCard(String tuKhoa) throws SQLException {
         List<ThuCung> list = new ArrayList<>();
+        if (tuKhoa == null || !tuKhoa.strip().matches("[0-9]{6,15}")) return list;
         String sql = """
             SELECT tc.maThuCung, tc.tenThuCung, tc.loaiThuCung, tc.canNang, 
                    tc.tinhTrangLong, tc.ghiChu,
                    kh.maKH, kh.hoTen, kh.soDienThoai
             FROM dbo.ThuCung tc
             LEFT JOIN dbo.KhachHang kh ON tc.maKH = kh.maKH
-            WHERE (? IS NULL OR ? = ''
-                   OR tc.tenThuCung LIKE ?
-                   OR tc.tinhTrangLong LIKE ?
-                   OR kh.hoTen LIKE ?
-                   OR kh.soDienThoai LIKE ?)
+            WHERE kh.soDienThoai LIKE ?
             ORDER BY tc.maThuCung ASC
         """;
 
         Connection con = getActiveConnection();
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
-            String pattern = "%" + (tuKhoa != null ? tuKhoa.trim() : "") + "%";
-            stmt.setString(1, tuKhoa);
-            stmt.setString(2, tuKhoa);
-            stmt.setString(3, pattern);
-            stmt.setString(4, pattern);
-            stmt.setString(5, pattern);
-            stmt.setString(6, pattern);
+            stmt.setString(1, tuKhoa.strip() + "%");
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {

@@ -53,6 +53,26 @@ public class SanPhamService {
         return dichVuSpaDAO.layDanhSachDichVuSpa();
     }
 
+    public void luuDichVuSpa(DichVuSpa dv, boolean chinhSua) {
+        if (dv == null || dv.getTenDichVu() == null || dv.getTenDichVu().isBlank())
+            throw new IllegalArgumentException("Vui lòng nhập tên dịch vụ Spa.");
+        if (dv.getDonGiaCoBan() == null || dv.getDonGiaCoBan().signum() <= 0)
+            throw new IllegalArgumentException("Đơn giá phải lớn hơn 0.");
+        if (dv.getThueSuat() == null || dv.getThueSuat().signum() < 0
+                || dv.getThueSuat().compareTo(BigDecimal.valueOf(100)) > 0)
+            throw new IllegalArgumentException("Thuế suất phải nằm trong khoảng 0 - 100%.");
+        if (dv.getLoaiThuCungApDung() == null)
+            throw new IllegalArgumentException("Cần chọn loài được áp dụng.");
+        if (dv.getThoiLuongPhut() < 1 || dv.getThoiLuongPhut() > 480)
+            throw new IllegalArgumentException("Thời gian dịch vụ phải từ 1 đến 480 phút.");
+        boolean ok = chinhSua ? dichVuSpaDAO.capNhatDichVu(dv) : dichVuSpaDAO.themDichVu(dv);
+        if (!ok) throw new IllegalStateException("Không thể lưu dịch vụ Spa vào SQL Server.");
+    }
+
+    public DichVuSpa timDichVuSpaTheoMa(String maDV) {
+        return dichVuSpaDAO.layDichVuTheoMa(maDV);
+    }
+
     public String taoMaSanPhamMoi(LoaiSanPham loai) throws SQLException {
         if (loai == null) {
             loai = LoaiSanPham.PHU_KIEN;

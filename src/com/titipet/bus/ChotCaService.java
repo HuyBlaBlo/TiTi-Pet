@@ -43,4 +43,22 @@ public class ChotCaService {
     private static void kiemTraMa(String ma, String loi) {
         if (ma == null || ma.isBlank()) throw new IllegalArgumentException(loi);
     }
+    public String moCa(String maNV, BigDecimal tienDauCa) {
+    kiemTraMa(maNV, "Chưa có nhân viên đăng nhập.");
+
+    if (tienDauCa == null || tienDauCa.signum() < 0) {
+        throw new IllegalArgumentException(
+                "Tiền đầu ca phải lớn hơn hoặc bằng 0."
+        );
+    }
+
+    try {
+        return caDao.moCa(maNV, tienDauCa);
+
+    } catch (SQLException e) {
+        throw new IllegalStateException(
+                "Không thể mở ca: " + e.getMessage(), e
+        );
+    }
+}
 }

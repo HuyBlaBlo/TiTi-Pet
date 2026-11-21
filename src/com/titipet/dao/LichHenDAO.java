@@ -119,6 +119,26 @@ public class LichHenDAO {
         return ds;
     }
     
+    /** Tim lich theo so dien thoai, khong tu y load lich cua khach khac. */
+    public List<LichHen> timLichTheoSoDienThoai(String soDienThoai) throws SQLException {
+        String phone = soDienThoai == null ? "" : soDienThoai.strip();
+        if (!phone.matches("0[0-9]{9}")) {
+            throw new IllegalArgumentException("Số điện thoại phải có đúng 10 chữ số và bắt đầu bằng 0.");
+        }
+        String sql = SQL_SELECT_LICH_HEN + """
+             WHERE kh.soDienThoai = ?
+             ORDER BY lh.thoiGianHen DESC
+             """;
+        List<LichHen> list = new ArrayList<>();
+        try (PreparedStatement ps = getActiveConnection().prepareStatement(sql)) {
+            ps.setString(1, phone);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) list.add(mapLichHen(rs));
+            }
+        }
+        return list;
+    }
+
     // ========================= 2. THÊM / ĐỔI LỊCH =========================
 
     /**

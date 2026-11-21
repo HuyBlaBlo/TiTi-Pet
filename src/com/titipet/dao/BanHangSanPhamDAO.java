@@ -25,6 +25,37 @@ public class BanHangSanPhamDAO {
         ORDER BY s.tenSanPham, s.maSanPham
         """;
 
+    /** De xuat chi cac san pham da ban, theo so luong tren hoa don da thanh toan. */
+    public List<SanPhamBanHang> laySanPhamBanChay(int gioiHan) throws SQLException {
+        String sql = """
+            SELECT TOP (?) s.maSanPham, s.tenSanPham, s.maVach,
+                   s.giaBan, s.soLuongTonKho, s.loaiSanPham, ta.hanSuDung
+            FROM dbo.ChiTietHoaDon_SanPham ct
+            JOIN dbo.HoaDon h ON h.maHoaDon = ct.maHoaDon AND h.trangThai = 'DA_THANH_TOAN'
+            JOIN dbo.SanPham s ON s.maSanPham = ct.maSanPham
+            LEFT JOIN dbo.ThucAn ta ON ta.maSanPham = s.maSanPham
+            WHERE s.dangKinhDoanh = 1 AND s.soLuongTonKho > 0
+              AND (ta.hanSuDung IS NULL OR ta.hanSuDung >= CONVERT(date, GETDATE()))
+            GROUP BY s.maSanPham, s.tenSanPham, s.maVach, s.giaBan,
+                     s.soLuongTonKho, s.loaiSanPham, ta.hanSuDung
+            ORDER BY SUM(ct.soLuong) DESC, s.tenSanPham
+            """;
+        List<SanPhamBanHang> list = new ArrayList<>();
+        try (PreparedStatement ps = layKetNoi().prepareStatement(sql)) {
+            ps.setInt(1, Math.max(1, Math.min(gioiHan, 20)));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Date hsd = rs.getDate("hanSuDung");
+                    list.add(new SanPhamBanHang(rs.getString("maSanPham"),
+                        rs.getString("tenSanPham"), rs.getString("maVach"),
+                        rs.getBigDecimal("giaBan"), rs.getInt("soLuongTonKho"),
+                        rs.getString("loaiSanPham"), hsd == null ? null : hsd.toLocalDate()));
+                }
+            }
+        }
+        return list;
+    }
+
     public List<SanPhamBanHang> timSanPham(String tuKhoa) throws SQLException {
         String key = tuKhoa == null ? "" : tuKhoa.strip();
         Connection connection = layKetNoi();

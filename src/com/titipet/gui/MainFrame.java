@@ -5,6 +5,7 @@ import com.titipet.bus.HoaDonService;
 import com.titipet.bus.PhanQuyenManHinh;
 import com.titipet.bus.TiepNhanSpaContext;
 import com.titipet.bus.ChuyenLichHenTiepNhanService;
+import com.titipet.bus.TrangThaiCaService;
 import com.titipet.entity.NhanVien;
 import com.titipet.entity.LichHen;
 import com.titipet.entity.enums.VaiTro;
@@ -60,6 +61,8 @@ public class MainFrame extends JFrame {
     private final SidebarPanel sidebar;
     private final TopBarPanel topBar;
     private String manHinhHienTai = TRANG_CHU;
+    private final TrangThaiCaService trangThaiCaService = new TrangThaiCaService();
+    private boolean dangTaiCa = false;
 
     public MainFrame(AuthService authService) {
         super("TiTiPet - Quản lý cửa hàng");
@@ -80,6 +83,10 @@ public class MainFrame extends JFrame {
         taoGiaoDien();
         hienThiManHinh(TRANG_CHU);
         cauHinhCuaSo();
+        // Dong bo badge ca tren tat ca man hinh khi thu ngan mo/chot ca.
+        javax.swing.Timer capNhatCa = new javax.swing.Timer(5000, e -> taiTrangThaiCa());
+        capNhatCa.start();
+        SwingUtilities.invokeLater(this::taiTrangThaiCa);
     }
 
     /** Trang chủ dùng cùng phiên đăng nhập để tải đúng dữ liệu theo vai trò. */
@@ -251,6 +258,46 @@ public class MainFrame extends JFrame {
         }
         if (LICH_HEN.equals(maManHinh)) {
             ((LichHenPanel) panels.get(LICH_HEN)).taiDuLieu();
+        }
+        taiTrangThaiCa();
+    }
+
+    /** Khong truy van SQL tren EDT, chi cap nhat mau/nhan tren giao dien. */
+    private void taiTrangThaiCa() {
+        if (dangTaiCa || !isDisplayable()) return;
+        NhanVien nv = authService.getNhanVienDangNhap().orElse(null);
+        if (nv == null) return;
+        dangTaiCa = true;
+        new SwingWorker<Boolean, Void>() {
+            @Override protected Boolean doInBackground() throws Exception {
+                return trangThaiCaService.daMoCa(nv);
+            }
+            @Override protected void done() {
+                dangTaiCa = false;
+                try {
+                    boolean opened = get();
+                    for (JPanel panel : panels.values()) capNhatNhayCa(panel, opened);
+                } catch (Exception ignored) {
+                    // UI giu trang thai cu; Trang chu/Chot ca se hien loi truy van rieng.
+                }
+            }
+        }.execute();
+    }
+
+    private static void capNhatNhayCa(Component component, boolean opened) {
+        if (component instanceof JLabel label) {
+            String txt = label.getText();
+            if (txt != null && (txt.equals("● Chưa mở ca") || txt.equals("● Đang trong ca")
+                    || txt.equals("● Mở ca"))) {
+                label.setText(opened ? "● Mở ca" : "● Chưa mở ca");
+                label.setForeground(opened ? new Color(22, 163, 74) : new Color(190, 119, 20));
+            }
+        } else if (component instanceof JButton button &&
+                ("● Chưa mở ca".equals(button.getText()) || "● Mở ca".equals(button.getText()))) {
+            button.setText(opened ? "● Mở ca" : "● Chưa mở ca");
+        }
+        if (component instanceof Container parent) {
+            for (Component child : parent.getComponents()) capNhatNhayCa(child, opened);
         }
     }
 

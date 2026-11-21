@@ -5,6 +5,7 @@ import com.titipet.connectDB.ConnectDB;
 import java.math.BigDecimal;
 import java.sql.*;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * DAO quản lý ca làm việc.
@@ -13,6 +14,108 @@ import java.util.Optional;
  */
 public class CaLamViecDAO {
 
+    /** Doc trang thai ca hien tai. Quan ly thay ca dang mo cua cua hang;
+     * thu ngan thay ca cua chinh minh. */
+    public boolean coCaDangMo(String maNV, boolean quanLy) throws SQLException {
+        String sql = """
+            SELECT TOP 1 1 FROM dbo.CaLamViec
+            WHERE trangThai = 'DANG_MO' AND (? = 1 OR maNV = ?)
+            """;
+        synchronized (ConnectDB.class) {
+            Connection con = ketNoi();
+            try (PreparedStatement ps = con.prepareStatement(sql)) {
+                ps.setInt(1, quanLy ? 1 : 0);
+                ps.setString(2, maNV);
+                try (ResultSet rs = ps.executeQuery()) { return rs.next(); }
+            }
+        }
+    }
+    public String moCa(
+        String maNV,
+        BigDecimal tienDauCa
+) throws SQLException {
+
+    if (maNV == null || maNV.isBlank()) {
+        throw new IllegalArgumentException(
+            "Không xác định được nhân viên."
+        );
+    }
+
+    if (tienDauCa == null || tienDauCa.signum() < 0) {
+        throw new IllegalArgumentException(
+            "Tiền đầu ca không hợp lệ."
+        );
+    }
+
+    String maCa = "CA" +
+        UUID.randomUUID().toString()
+            .replace("-", "")
+            .substring(0, 18);
+
+    String sql = """
+        INSERT INTO dbo.CaLamViec
+        (
+            maCa,
+            maNV,
+            thoiGianBatDau,
+            tienDauCa,
+            trangThai
+        )
+        VALUES (?, ?, SYSDATETIME(), ?, 'DANG_MO')
+        """;
+
+    synchronized (ConnectDB.class) {
+        Connection con = ketNoi();
+        boolean autoCommit = con.getAutoCommit();
+
+        try {
+            con.setAutoCommit(false);
+
+            // Không cho một nhân viên mở hai ca cùng lúc.
+            String check = """
+                SELECT TOP 1 maCa
+                FROM dbo.CaLamViec WITH (UPDLOCK, HOLDLOCK)
+                WHERE maNV = ?
+                  AND trangThai = 'DANG_MO'
+                """;
+
+            try (PreparedStatement ps =
+                    con.prepareStatement(check)) {
+
+                ps.setString(1, maNV);
+
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        throw new SQLException(
+                            "Nhân viên đã có ca đang mở: "
+                            + rs.getString("maCa")
+                        );
+                    }
+                }
+            }
+
+            try (PreparedStatement ps =
+                    con.prepareStatement(sql)) {
+
+                ps.setString(1, maCa);
+                ps.setString(2, maNV);
+                ps.setBigDecimal(3, tienDauCa);
+
+                ps.executeUpdate();
+            }
+
+            con.commit();
+            return maCa;
+
+        } catch (SQLException e) {
+            con.rollback();
+            throw e;
+
+        } finally {
+            con.setAutoCommit(autoCommit);
+        }
+    }
+}
     public record TongHopCa(
             String maCa,
             String maNV,

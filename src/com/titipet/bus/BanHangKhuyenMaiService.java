@@ -14,6 +14,7 @@ import java.util.Map;
 /** Quy tắc giảm giá theo phạm vi; không phụ thuộc UI hoặc SQL. */
 public class BanHangKhuyenMaiService {
     private final BanHangKhuyenMaiDAO dao = new BanHangKhuyenMaiDAO();
+    private final BanHangThueService thueService = new BanHangThueService();
 
     public List<KhuyenMaiPOS> layKhuyenMai() {
         try { return dao.layDangHieuLuc(); }
@@ -59,7 +60,9 @@ public class BanHangKhuyenMaiService {
             spGiam.put(d.sanPham().maSanPham(), discount);
             tamTinh = tamTinh.add(gross);
             giamKM = giamKM.add(discount);
-            truocThue = truocThue.add(gross.subtract(discount)); // SP có thuế suất 0 trong POS hiện tại
+            var tien = thueService.sanPham(gross.subtract(discount));
+            truocThue = truocThue.add(tien.truocThue());
+            thue = thue.add(tien.tienThue());
         }
         for (BanHangService.DongSpa d : gioSpa) {
             if (d == null || d.donGiaDaChot() == null || d.thueSuat() == null)
@@ -69,19 +72,12 @@ public class BanHangKhuyenMaiService {
             BigDecimal giam = duDieuKien ? d.donGiaDaChot().multiply(rate).setScale(2, RoundingMode.HALF_UP)
                                          : BigDecimal.ZERO;
             BigDecimal giaSauGiam = d.donGiaDaChot().subtract(giam);
-            BigDecimal soTruocThue, soThue;
-            if (d.giaDaBaoGomThue()) {
-                soTruocThue = giaSauGiam.divide(
-                    BigDecimal.ONE.add(d.thueSuat().movePointLeft(2)), 2, RoundingMode.HALF_UP);
-                soThue = giaSauGiam.subtract(soTruocThue);
-            } else {
-                soTruocThue = giaSauGiam;
-                soThue = soTruocThue.multiply(d.thueSuat())
-                        .movePointLeft(2).setScale(2, RoundingMode.HALF_UP);
-            }
+            var tien = thueService.spa(giaSauGiam, d.giaDaBaoGomThue());
+            BigDecimal soTruocThue = tien.truocThue();
+            BigDecimal soThue = tien.tienThue();
             spaGiam.add(new DongSpaSauGiam(giam, soTruocThue, soThue,
                     soTruocThue.add(soThue)));
-            tamTinh = tamTinh.add(d.thanhTien());
+            tamTinh = tamTinh.add(d.donGiaDaChot());
             giamKM = giamKM.add(giam);
             truocThue = truocThue.add(soTruocThue);
             thue = thue.add(soThue);

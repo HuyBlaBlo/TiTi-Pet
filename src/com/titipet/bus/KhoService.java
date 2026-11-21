@@ -20,7 +20,12 @@ public class KhoService {
         return khoHangDAO.layDanhSachSanPhamKho(keyword);
     }
 
+    public List<SanPham> layTatCaSanPhamKho() throws SQLException {
+        return khoHangDAO.layTatCaSanPhamKho();
+    }
+
     public String xacDinhTrangThai(SanPham sp) {
+        if (!sp.isDangKinhDoanh()) return "Ngừng kinh doanh";
         if (sp instanceof ThucAn ta) {
             if (ta.daHetHan()) {
                 return "Hết hạn";

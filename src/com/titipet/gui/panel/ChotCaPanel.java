@@ -71,6 +71,13 @@ public class ChotCaPanel extends JPanel {
             text("—", 15, NAVY, Font.BOLD);
 
     private final JTextField tienMatThucTe = new JTextField();
+    // Giao dien mo ca
+    private final JTextField tienDauCaInput = new JTextField();
+
+    private final JButton moCaButton =
+        primary("Mở ca");
+
+    private JPanel moCaPanel;
 
     private final JCheckBox checkTienMat =
             check("Đã kiểm đếm tiền mặt tại quầy");
@@ -187,6 +194,7 @@ public class ChotCaPanel extends JPanel {
 
             taiLai.addActionListener(e -> taiCa());
             guiPhieu.addActionListener(e -> guiPhieu());
+            moCaButton.addActionListener(e -> moCa());
 
             tienMatThucTe.getDocument().addDocumentListener(
                     new DocumentListener() {
@@ -313,7 +321,31 @@ public class ChotCaPanel extends JPanel {
 
         JPanel fields = vertical(12);
 
-        fields.add(labelAndValue("Mã ca đang làm", maCaLabel));
+// Khu vuc mo ca
+moCaPanel = vertical(10);
+
+moCaPanel.add(
+        sectionTitle(
+                "Mở ca làm việc",
+                "Nhập số tiền mặt hiện có tại quầy trước khi bắt đầu bán hàng"
+        )
+);
+
+moCaPanel.add(
+        labelAndValue(
+                "Tiền mặt đầu ca (VNĐ)",
+                tienDauCaInput
+        )
+);
+
+moCaPanel.add(moCaButton);
+
+// Ban dau hien thi khu vuc mo ca
+moCaPanel.setVisible(true);
+
+fields.add(moCaPanel);
+
+fields.add(labelAndValue("Mã ca đang làm", maCaLabel));
 
         fields.add(
                 twoFields(
@@ -557,6 +589,60 @@ public class ChotCaPanel extends JPanel {
 
         return columns(left, right);
     }
+    // =====================================================
+// MO CA LAM VIEC
+// =====================================================
+
+private void moCa() {
+
+    final BigDecimal tienDauCa;
+
+    try {
+        tienDauCa = docTien(tienDauCaInput.getText());
+
+    } catch (IllegalArgumentException ex) {
+        JOptionPane.showMessageDialog(
+                this,
+                ex.getMessage(),
+                "Thông tin không hợp lệ",
+                JOptionPane.WARNING_MESSAGE
+        );
+        return;
+    }
+
+    int xacNhan = JOptionPane.showConfirmDialog(
+            this,
+            "Bạn có chắc chắn muốn mở ca không?"
+                    + "\nTiền đầu ca: " + tien(tienDauCa),
+            "Xác nhận mở ca",
+            JOptionPane.YES_NO_OPTION
+    );
+
+    if (xacNhan != JOptionPane.YES_OPTION) {
+        return;
+    }
+
+    moCaButton.setEnabled(false);
+
+    chayNen(
+            () -> service.moCa(maNV, tienDauCa),
+            maCa -> {
+
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Mở ca thành công!"
+                                + "\nMã ca: " + maCa
+                                + "\nTiền đầu ca: " + tien(tienDauCa),
+                        "Thông báo",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
+
+                tienDauCaInput.setText("");
+
+                taiCa();
+            }
+    );
+}
 
     // =====================================================
     // TAI CA TU SQL SERVER
@@ -571,6 +657,13 @@ public class ChotCaPanel extends JPanel {
                     caDangXem = ca;
 
                     if (ca == null) {
+                        moCaPanel.setVisible(true);
+                        moCaButton.setEnabled(true);
+                        guiPhieu.setEnabled(false);
+
+                        moCaPanel.revalidate();
+                        moCaPanel.repaint();
+
                         maCaLabel.setText("Chưa có ca đang mở");
                         nvLabel.setText(maNV);
                         soHoaDonLabel.setText("0 hóa đơn");
@@ -581,6 +674,8 @@ public class ChotCaPanel extends JPanel {
                         duKienLabel.setText("—");
                         chenhLechLabel.setText("—");
                         trangThaiBadge.setText("Chưa mở ca");
+                        
+
 
                         loiKhongCoCa.setText(
                                 "Cần mở ca tại UC006 trước khi gửi phiếu."
@@ -591,6 +686,12 @@ public class ChotCaPanel extends JPanel {
                         );
                         return;
                     }
+                    moCaPanel.setVisible(false);
+                    moCaButton.setEnabled(false);
+
+                    // Cap nhat giao dien
+                    moCaPanel.revalidate();
+                    moCaPanel.repaint();
 
                     maCaLabel.setText(ca.maCa());
                     nvLabel.setText(ca.maNV());

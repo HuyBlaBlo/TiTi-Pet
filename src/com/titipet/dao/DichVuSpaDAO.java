@@ -83,8 +83,7 @@ public class DichVuSpaDAO {
                 WHERE maDichVu = ?
                 """;
 
-        try (Connection con = ConnectDB.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
+        try (PreparedStatement ps = getActiveConnection().prepareStatement(sql)) {
 
             ps.setString(1, maDichVu);
 
@@ -129,6 +128,18 @@ public class DichVuSpaDAO {
         return null;
     }
 
+    /** Sinh ma DV tu bang DichVuSpa, dung trong transaction them dich vu. */
+    public String taoMaDichVuMoi(Connection con) throws SQLException {
+        try (PreparedStatement ps = con.prepareStatement("""
+                SELECT COALESCE(MAX(TRY_CONVERT(INT, SUBSTRING(maDichVu, 3, 18))), 0)
+                FROM dbo.DichVuSpa WITH (TABLOCKX, HOLDLOCK)
+                WHERE maDichVu LIKE 'DV[0-9]%'
+                """); ResultSet rs = ps.executeQuery()) {
+            if (!rs.next()) throw new SQLException("Không sinh được mã dịch vụ.");
+            return String.format(java.util.Locale.ROOT, "DV%04d", rs.getInt(1) + 1);
+        }
+    }
+
     // Thêm dịch vụ
     public boolean themDichVu(DichVuSpa dv) {
         String sql = """
@@ -140,8 +151,17 @@ public class DichVuSpaDAO {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
-        try (Connection con = ConnectDB.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
+        Connection con = null;
+        boolean originalAutoCommit = true;
+        try {
+            // Dung ket noi rieng de transaction tao ma khong anh huong cac DAO khac.
+            con = ConnectDB.getInstance().moKetNoiMoi();
+            originalAutoCommit = con.getAutoCommit();
+            con.setAutoCommit(false);
+            if (dv.getMaDichVu() == null || dv.getMaDichVu().isBlank()) {
+                dv.setMaDichVu(taoMaDichVuMoi(con));
+            }
+            try (PreparedStatement ps = con.prepareStatement(sql)) {
 
             ps.setString(1, dv.getMaDichVu());
             ps.setString(2, dv.getTenDichVu());
@@ -158,13 +178,19 @@ public class DichVuSpaDAO {
             ps.setInt(7, dv.getThoiLuongPhut());
             ps.setBoolean(8, dv.isDangHoatDong());
 
-            return ps.executeUpdate() > 0;
-
+            if (ps.executeUpdate() != 1) throw new SQLException("Không lưu được dịch vụ Spa.");
+            con.commit();
+            return true;
+            }
         } catch (SQLException e) {
-            e.printStackTrace();
+            if (con != null) try { con.rollback(); } catch (SQLException ignored) { }
+            throw new IllegalStateException("Không thêm được dịch vụ Spa: " + e.getMessage(), e);
+        } finally {
+            if (con != null) {
+                try { con.setAutoCommit(originalAutoCommit); } catch (SQLException ignored) { }
+                try { con.close(); } catch (SQLException ignored) { }
+            }
         }
-
-        return false;
     }
 
     // Cập nhật dịch vụ
@@ -181,8 +207,7 @@ public class DichVuSpaDAO {
                 WHERE maDichVu = ?
                 """;
 
-        try (Connection con = ConnectDB.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
+        try (PreparedStatement ps = getActiveConnection().prepareStatement(sql)) {
 
             ps.setString(1, dv.getTenDichVu());
             ps.setBigDecimal(2, dv.getDonGiaCoBan());
@@ -215,8 +240,7 @@ public class DichVuSpaDAO {
                 WHERE maDichVu = ?
                 """;
 
-        try (Connection con = ConnectDB.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
+        try (PreparedStatement ps = getActiveConnection().prepareStatement(sql)) {
 
             ps.setString(1, maDichVu);
 
@@ -243,8 +267,7 @@ public class DichVuSpaDAO {
                 ORDER BY tenDichVu
                 """;
 
-        try (Connection con = ConnectDB.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
+        try (PreparedStatement ps = getActiveConnection().prepareStatement(sql)) {
 
             ps.setString(1, "%" + ten + "%");
 
